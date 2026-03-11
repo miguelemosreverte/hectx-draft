@@ -1,0 +1,46 @@
+module HectX.Compliance where
+
+import HectX.Types
+
+-- Participant eligibility record (KYC/KYB completed off-ledger)
+template Participant
+  with
+    participantAdmin : Party
+    party : Party
+    observers : [Party]
+    jurisdiction : Text
+    isAccredited : Bool
+    status : EligibilityStatus
+  where
+    signatory participantAdmin
+    observer party, observers
+    key (participantAdmin, party) : (Party, Party)
+    maintainer key._1
+
+    choice UpdateStatus : ContractId Participant
+      with
+        newStatus : EligibilityStatus
+      controller participantAdmin
+      do
+        create this with status = newStatus
+
+
+-- Wallet approval is keyed by party. Party is treated as the wallet owner identity.
+template WalletApproval
+  with
+    walletAdmin : Party
+    owner : Party
+    observers : [Party]
+    active : Bool
+  where
+    signatory walletAdmin
+    observer owner, observers
+    key (walletAdmin, owner) : (Party, Party)
+    maintainer key._1
+
+    choice SetActive : ContractId WalletApproval
+      with
+        newActive : Bool
+      controller walletAdmin
+      do
+        create this with active = newActive

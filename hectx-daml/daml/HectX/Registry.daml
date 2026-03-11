@@ -1,0 +1,27 @@
+module HectX.Registry where
+
+import Splice.Api.Token.HoldingV1 as Api.Token.HoldingV1
+import HectX.Policy
+
+
+template HectXRegistry
+  with
+    admin : Party
+    instrumentId : Api.Token.HoldingV1.InstrumentId
+    eligibilityPolicyCid : ContractId EligibilityPolicy
+    feeScheduleCid : ContractId FeeSchedule
+    mintPolicyCid : ContractId MintPolicy
+  where
+    signatory admin
+
+    choice UpdatePolicies : ContractId HectXRegistry
+      with
+        newEligibilityPolicyCid : ContractId EligibilityPolicy
+        newFeeScheduleCid : ContractId FeeSchedule
+        newMintPolicyCid : ContractId MintPolicy
+      controller admin
+      do
+        create this with
+          eligibilityPolicyCid = newEligibilityPolicyCid
+          feeScheduleCid = newFeeScheduleCid
+          mintPolicyCid = newMintPolicyCid

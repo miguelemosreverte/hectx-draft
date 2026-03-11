@@ -1,0 +1,123 @@
+module HectX.Minting where
+
+import DA.Time
+
+import HectX.Types
+import HectX.Policy
+import HectX.NAV
+import HectX.Holding
+import HectX.Compliance
+import HectX.Registry
+
+import Splice.Api.Token.HoldingV1 as Api.Token.HoldingV1
+
+
+data MintOutcome = Minted | MintRejected
+  deriving (Eq, Show)
+
+require : Text -> Bool -> Update ()
+require msg cond = if cond then pure () else abort msg
+
+
+template MintRequest
+  with
+    requestAdmin : Party
+    investor : Party
+    amount : Decimal
+    requestedAt : Time
+  where
+    signatory investor
+    observer requestAdmin
+
+    choice ApproveMint : ContractId MintReceipt
+      with
+        registryCid : ContractId HectXRegistry
+        marketPrice : Decimal
+      controller requestAdmin
+      do
+        now <- getTime
+        reg <- fetch registryCid
+        fee <- fetch reg.feeScheduleCid
+        policy <- fetch reg.mintPolicyCid
+        (_, navSnap) <- fetchByKey @NAVSnapshot requestAdmin
+        (supplyCid, supply) <- fetchByKey @Supply requestAdmin
+        (_, investorP) <- fetchByKey @Participant (requestAdmin, investor)
+        (_, investorW) <- fetchByKey @WalletApproval (requestAdmin, investor)
+
+        require "minting disabled" policy.mintingEnabled
+        require "investor not eligible" (investorP.status == Eligible)
+        require "wallet not active" investorW.active
+
+        let navAge = subTime now navSnap.timestamp
+        require "NAV snapshot too old" (navAge <= seconds policy.maxNavAgeSeconds)
+
+        let navPerToken = if supply.totalSupply == 0.0 then 1.0 else navSnap.nav / supply.totalSupply
+        let subFee = amount * fee.subscriptionFeeBps / 10000.0
+        let convFee = amount * fee.conversionFeeBps / 10000.0
+        let premium = if marketPrice > navPerToken then marketPrice - navPerToken else 0.0
+        let elasticFee = if policy.elasticFeeActive then premium * policy.elasticFeeBps / 10000.0 else 0.0
+        let netAmount = amount - subFee - convFee - elasticFee
+        require "net amount must be positive" (netAmount > 0.0)
+
+        let mintedAmount = netAmount / navPerToken
+
+        archive supplyCid
+        _ <- create Supply with supplyAdmin = requestAdmin; totalSupply = supply.totalSupply + mintedAmount
+
+        holdingCid <- create HectXHolding with
+          owner = investor
+          issuer = requestAdmin
+          instrumentId = reg.instrumentId
+          amount = mintedAmount
+          mintedAt = now
+          navPerTokenAtMint = navPerToken
+
+        create MintReceipt with
+          receiptAdmin = requestAdmin
+          investor
+          amount
+          netAmount
+          mintedAmount
+          navPerToken
+          outcome = Minted
+          reason = None
+          requestedAt
+          processedAt = now
+          holdingCid = Some (toInterfaceContractId holdingCid)
+
+    choice RejectMint : ContractId MintReceipt
+      with
+        reason : ReasonCode
+      controller requestAdmin
+      do
+        now <- getTime
+        create MintReceipt with
+          receiptAdmin = requestAdmin
+          investor
+          amount
+          netAmount = 0.0
+          mintedAmount = 0.0
+          navPerToken = 0.0
+          outcome = MintRejected
+          reason = Some reason
+          requestedAt
+          processedAt = now
+          holdingCid = None
+
+
+template MintReceipt
+  with
+    receiptAdmin : Party
+    investor : Party
+    amount : Decimal
+    netAmount : Decimal
+    mintedAmount : Decimal
+    navPerToken : Decimal
+    outcome : MintOutcome
+    reason : Optional ReasonCode
+    requestedAt : Time
+    processedAt : Time
+    holdingCid : Optional (ContractId Api.Token.HoldingV1.Holding)
+  where
+    signatory receiptAdmin
+    observer investor

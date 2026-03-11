@@ -1,0 +1,3 @@
+[submodule "vendor/splice"]
+	path = vendor/splice
+	url = https://github.com/hyperledger-labs/splice

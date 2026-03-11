@@ -1,0 +1,61 @@
+{-# LANGUAGE NoDamlSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NoOverloadedStrings #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE DatatypeContexts #-}
+{-# OPTIONS_GHC -Wno-unused-imports -Wno-missing-methods -Wno-deprecations -Wno-x-crypto -Wno-x-exceptions #-}
+module DA.Stack (
+        module DA.Stack,
+        type CurrentSdk.DA.Stack.Types.SrcLoc(CurrentSdk.DA.Stack.Types.SrcLoc,
+                                              srcLocEndCol, srcLocEndLine, srcLocFile, srcLocModule,
+                                              srcLocPackage, srcLocStartCol, srcLocStartLine)
+    ) where
+import DA.Internal.Exception ()
+import DA.Internal.Fail ()
+import DA.Internal.Interface.AnyView ()
+import DA.Internal.Prelude ()
+import DA.Internal.Template.Functions ()
+import CurrentSdk.DA.Stack.Types
+import CurrentSdk.Data.String
+import Pkg_7cff38e34bd192d498d5a7606aa3b893e35b0f632d582b273f66dab90f2f14ef.GHC.Classes
+import CurrentSdk.GHC.Err
+import Pkg_7cff38e34bd192d498d5a7606aa3b893e35b0f632d582b273f66dab90f2f14ef.GHC.Stack.Types
+import CurrentSdk.GHC.Types
+prettySrcLoc ::
+  (CurrentSdk.DA.Stack.Types.SrcLoc -> CurrentSdk.GHC.Types.Text)
+prettySrcLoc _
+  = (CurrentSdk.GHC.Err.error
+       (CurrentSdk.Data.String.fromString "data-dependency stub"))
+convSrcLoc ::
+  (Pkg_7cff38e34bd192d498d5a7606aa3b893e35b0f632d582b273f66dab90f2f14ef.GHC.Stack.Types.SrcLoc
+   -> CurrentSdk.DA.Stack.Types.SrcLoc)
+convSrcLoc _
+  = (CurrentSdk.GHC.Err.error
+       (CurrentSdk.Data.String.fromString "data-dependency stub"))
+getCallStack ::
+  (Pkg_7cff38e34bd192d498d5a7606aa3b893e35b0f632d582b273f66dab90f2f14ef.GHC.Stack.Types.CallStack
+   -> ([] (((,) CurrentSdk.GHC.Types.Text) CurrentSdk.DA.Stack.Types.SrcLoc)))
+getCallStack _
+  = (CurrentSdk.GHC.Err.error
+       (CurrentSdk.Data.String.fromString "data-dependency stub"))
+prettyCallStackLines ::
+  (Pkg_7cff38e34bd192d498d5a7606aa3b893e35b0f632d582b273f66dab90f2f14ef.GHC.Stack.Types.CallStack
+   -> ([] CurrentSdk.GHC.Types.Text))
+prettyCallStackLines _
+  = (CurrentSdk.GHC.Err.error
+       (CurrentSdk.Data.String.fromString "data-dependency stub"))
+prettyCallStack ::
+  (Pkg_7cff38e34bd192d498d5a7606aa3b893e35b0f632d582b273f66dab90f2f14ef.GHC.Stack.Types.CallStack
+   -> CurrentSdk.GHC.Types.Text)
+prettyCallStack _
+  = (CurrentSdk.GHC.Err.error
+       (CurrentSdk.Data.String.fromString "data-dependency stub"))
+callStack ::
+  ((Pkg_7cff38e34bd192d498d5a7606aa3b893e35b0f632d582b273f66dab90f2f14ef.GHC.Classes.IP "callStack" Pkg_7cff38e34bd192d498d5a7606aa3b893e35b0f632d582b273f66dab90f2f14ef.GHC.Stack.Types.CallStack) =>
+   Pkg_7cff38e34bd192d498d5a7606aa3b893e35b0f632d582b273f66dab90f2f14ef.GHC.Stack.Types.CallStack)
+callStack
+  = (CurrentSdk.GHC.Err.error
+       (CurrentSdk.Data.String.fromString "data-dependency stub"))

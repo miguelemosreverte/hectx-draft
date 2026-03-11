@@ -1,0 +1,28 @@
+module HectX.NAV where
+
+import DA.Time
+
+
+template NAVSnapshot
+  with
+    navAdmin : Party
+    nav : Decimal
+    gav : Decimal
+    reserves : Decimal
+    liabilities : Decimal
+    accruedFees : Decimal
+    timestamp : Time
+  where
+    signatory navAdmin
+    key navAdmin : Party
+    maintainer key
+
+
+template Supply
+  with
+    supplyAdmin : Party
+    totalSupply : Decimal
+  where
+    signatory supplyAdmin
+    key supplyAdmin : Party
+    maintainer key
