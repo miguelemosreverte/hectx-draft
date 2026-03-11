@@ -3,6 +3,7 @@ module HectX.Tests where
 import Daml.Script
 import DA.Assert
 import DA.Time
+import DA.Date
 
 import Splice.Api.Token.HoldingV1 as Api.Token.HoldingV1
 import Splice.Api.Token.TransferInstructionV1 as Api.Token.TransferInstructionV1
@@ -104,12 +105,13 @@ test_HectX_Mint_And_Transfer = script do
   assertMsg "unexpected minted amount" (aliceHolding.amount == 1000.0)
 
   now <- getTime
+  let requestedAt = datetime 1970 Jan 1 0 0 0
   let transfer = Api.Token.TransferInstructionV1.Transfer with
         sender = alice
         receiver = bob
         amount = 100.0
         instrumentId
-        requestedAt = now
+        requestedAt = requestedAt
         executeBefore = addRelTime now (seconds 600)
         inputHoldingCids = [toInterfaceContractId aliceHoldingCid]
         meta = Api.Token.MetadataV1.emptyMetadata
@@ -122,11 +124,14 @@ test_HectX_Mint_And_Transfer = script do
   let tfVisibleIds = map (._1) tfVisible
   assertMsg "transfer factory not visible to sender" (elem tf tfVisibleIds)
 
-  _ <- submitMulti [alice, admin] [] do
-    exerciseCmd tf TransferFactory_Transfer with
+  transferResult <- trySubmit (actAs [alice, admin]) do
+    exerciseCmd (toInterfaceContractId @Api.Token.TransferInstructionV1.TransferFactory tf) TransferFactory_Transfer with
       expectedAdmin = admin
       transfer
       extraArgs
+  case transferResult of
+    Left err -> error ("transfer failed: " <> show err)
+    Right _ -> pure ()
 
   bobHoldings <- query @HectXHolding admin
   let bobForInstr = [ (cid, h) | (cid, h) <- bobHoldings, h.owner == bob && h.instrumentId == instrumentId ]
