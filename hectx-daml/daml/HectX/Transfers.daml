@@ -1,0 +1,190 @@
+module HectX.Transfers where
+
+import DA.Time
+import DA.Foldable (forA_)
+import DA.TextMap qualified as TextMap
+
+import Splice.Api.Token.MetadataV1 qualified as Api.Token.MetadataV1
+import Splice.Api.Token.HoldingV1 qualified as Api.Token.HoldingV1
+import Splice.Api.Token.TransferInstructionV1
+
+import HectX.Holding
+import HectX.Compliance
+import HectX.Types
+
+emptyMeta : Api.Token.MetadataV1.Metadata
+emptyMeta = Api.Token.MetadataV1.Metadata with values = TextMap.empty
+
+require : Text -> Bool -> Update ()
+require msg cond = if cond then pure () else abort msg
+
+runTransfer
+  : Party
+  -> Api.Token.HoldingV1.InstrumentId
+  -> TransferFactory_Transfer
+  -> Update TransferInstructionResult
+runTransfer admin factoryInstrumentId arg = do
+  now <- getTime
+  let TransferFactory_Transfer{..} = arg
+  require "expectedAdmin mismatch" (expectedAdmin == admin)
+  require "requestedAt must be in the past" (transfer.requestedAt <= now)
+  require "executeBefore must be in the future" (transfer.executeBefore > now)
+  require "instrumentId mismatch" (transfer.instrumentId == factoryInstrumentId)
+
+  -- Compliance checks
+  senderPCid <- lookupByKey @Participant (admin, transfer.sender)
+  receiverPCid <- lookupByKey @Participant (admin, transfer.receiver)
+  senderWCid <- lookupByKey @WalletApproval (admin, transfer.sender)
+  receiverWCid <- lookupByKey @WalletApproval (admin, transfer.receiver)
+
+  senderP <- case senderPCid of
+    None -> abort "sender participant missing"
+    Some cid -> fetch cid
+  receiverP <- case receiverPCid of
+    None -> abort "receiver participant missing"
+    Some cid -> fetch cid
+  senderW <- case senderWCid of
+    None -> abort "sender wallet approval missing"
+    Some cid -> fetch cid
+  receiverW <- case receiverWCid of
+    None -> abort "receiver wallet approval missing"
+    Some cid -> fetch cid
+  require "sender not eligible" (senderP.status == Eligible)
+  require "receiver not eligible" (receiverP.status == Eligible)
+  require "sender wallet not active" senderW.active
+  require "receiver wallet not active" receiverW.active
+
+  require "inputHoldingCids required" (not (null transfer.inputHoldingCids))
+
+  holdings <- forA transfer.inputHoldingCids $ \ifaceCid -> do
+    let hCid : ContractId HectXHolding = fromInterfaceContractId ifaceCid
+    fetch hCid
+
+  let total = sum (map (.amount) holdings)
+  require "insufficient funds" (total >= transfer.amount)
+  require "invalid holdings" (all (\h -> h.owner == transfer.sender && h.instrumentId == factoryInstrumentId) holdings)
+
+  -- Archive inputs (admin-controlled)
+  forA_ transfer.inputHoldingCids $ \ifaceCid -> do
+    let hCid : ContractId HectXHolding = fromInterfaceContractId ifaceCid
+    archive hCid
+
+  receiverHoldingCid <- create HectXHolding with
+    owner = transfer.receiver
+    issuer = admin
+    instrumentId = factoryInstrumentId
+    amount = transfer.amount
+    mintedAt = now
+    navPerTokenAtMint = 0.0
+
+  senderChangeCids <-
+    if total > transfer.amount then do
+      changeCid <- create HectXHolding with
+        owner = transfer.sender
+        issuer = admin
+        instrumentId = factoryInstrumentId
+        amount = total - transfer.amount
+        mintedAt = now
+        navPerTokenAtMint = 0.0
+      pure [toInterfaceContractId changeCid]
+    else pure []
+
+  pure $ TransferInstructionResult with
+    output = TransferInstructionResult_Completed with
+      receiverHoldingCids = [toInterfaceContractId receiverHoldingCid]
+    senderChangeCids
+    meta = emptyMeta
+
+
+template HectXTransferFactory
+  with
+    admin : Party
+    factoryInstrumentId : Api.Token.HoldingV1.InstrumentId
+    observers : [Party]
+  where
+    signatory admin
+    observer observers
+
+    interface instance TransferFactory for HectXTransferFactory where
+      view = TransferFactoryView with
+        admin
+        meta = emptyMeta
+
+      transferFactory_publicFetchImpl _ _ = pure $ TransferFactoryView with
+        admin
+        meta = emptyMeta
+
+      transferFactory_transferImpl _ arg = runTransfer admin factoryInstrumentId arg
+
+    choice ExecuteTransfer : TransferInstructionResult
+      with
+        expectedAdmin : Party
+        transfer : Transfer
+        extraArgs : Api.Token.MetadataV1.ExtraArgs
+      controller admin
+      do
+        runTransfer admin factoryInstrumentId (TransferFactory_Transfer with expectedAdmin; transfer; extraArgs)
+
+    choice DirectTransfer : ()
+      with
+        sender : Party
+        receiver : Party
+        amount : Decimal
+        inputHoldingCids : [ContractId HectXHolding]
+      controller admin
+      do
+        -- Compliance checks
+        senderPCid <- lookupByKey @Participant (admin, sender)
+        receiverPCid <- lookupByKey @Participant (admin, receiver)
+        senderWCid <- lookupByKey @WalletApproval (admin, sender)
+        receiverWCid <- lookupByKey @WalletApproval (admin, receiver)
+
+        senderP <- case senderPCid of
+          None -> abort "sender participant missing"
+          Some cid -> fetch cid
+        receiverP <- case receiverPCid of
+          None -> abort "receiver participant missing"
+          Some cid -> fetch cid
+        senderW <- case senderWCid of
+          None -> abort "sender wallet approval missing"
+          Some cid -> fetch cid
+        receiverW <- case receiverWCid of
+          None -> abort "receiver wallet approval missing"
+          Some cid -> fetch cid
+        require "sender not eligible" (senderP.status == Eligible)
+        require "receiver not eligible" (receiverP.status == Eligible)
+        require "sender wallet not active" senderW.active
+        require "receiver wallet not active" receiverW.active
+
+        require "inputHoldingCids required" (not (null inputHoldingCids))
+        holdings <- forA inputHoldingCids fetch
+        let total = sum (map (.amount) holdings)
+        require "insufficient funds" (total >= amount)
+        require "invalid holdings" (all (\h -> h.owner == sender && h.instrumentId == factoryInstrumentId) holdings)
+
+        forA_ inputHoldingCids archive
+
+        now <- getTime
+        _ <- create HectXHolding with
+          owner = receiver
+          issuer = admin
+          instrumentId = factoryInstrumentId
+          amount = amount
+          mintedAt = now
+          navPerTokenAtMint = 0.0
+
+        if total > amount then do
+          _ <- create HectXHolding with
+            owner = sender
+            issuer = admin
+            instrumentId = factoryInstrumentId
+            amount = total - amount
+            mintedAt = now
+            navPerTokenAtMint = 0.0
+          pure ()
+        else pure ()
+
+    nonconsuming choice Ping : ()
+      controller admin
+      do
+        pure ()

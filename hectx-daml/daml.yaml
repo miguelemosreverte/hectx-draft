@@ -1,0 +1,21 @@
+sdk-version: 3.4.11
+name: hectx
+version: 0.1.0
+source: daml
+dependencies:
+  - daml-prim
+  - daml-stdlib
+  - daml-script
+data-dependencies:
+  - ../vendor/splice/token-standard/splice-api-token-metadata-v1/.daml/dist/splice-api-token-metadata-v1-current.dar
+  - ../vendor/splice/token-standard/splice-api-token-holding-v1/.daml/dist/splice-api-token-holding-v1-current.dar
+  - ../vendor/splice/token-standard/splice-api-token-transfer-instruction-v1/.daml/dist/splice-api-token-transfer-instruction-v1-current.dar
+build-options:
+  - --target=2.dev
+  - --ghc-option=-Wunused-binds
+  - --ghc-option=-Wunused-matches
+codegen:
+  js:
+    output-directory: ../hectx-services/daml-js
+    npm-scope: hectx
+    package-prefix: org.hectx

@@ -1,0 +1,15 @@
+module HectX.Types where
+
+data EligibilityStatus = Eligible | Suspended | Ineligible
+  deriving (Eq, Show)
+
+data SubscriptionStatus = Pending | Approved | Rejected
+  deriving (Eq, Show)
+
+data ReasonCode
+  = ReasonCompliance
+  | ReasonPricing
+  | ReasonSettlement
+  | ReasonOperational
+  | ReasonPolicy
+  deriving (Eq, Show)

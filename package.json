@@ -1,0 +1,13 @@
+{
+  "name": "hectx-report-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render:report": "node scripts/render-report.mjs",
+    "screenshot:report": "node scripts/screenshot-report.mjs"
+  },
+  "dependencies": {
+    "marked": "^12.0.0",
+    "playwright": "^1.46.0"
+  }
+}

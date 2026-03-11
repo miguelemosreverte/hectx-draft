@@ -1,0 +1,42 @@
+module HectX.Policy where
+
+import DA.TextMap qualified as TextMap
+
+-- High-level policy configuration controlled by the operator.
+
+data RestrictedRule = RestrictedRule with
+    description : Text
+    minNetWorth : Optional Decimal
+    minAssets : Optional Decimal
+    minIncome : Optional Decimal
+  deriving (Eq, Show)
+
+
+template EligibilityPolicy
+  with
+    eligibilityAdmin : Party
+    prohibitedJurisdictions : [Text]
+    restrictedJurisdictions : TextMap.TextMap RestrictedRule
+  where
+    signatory eligibilityAdmin
+
+
+template FeeSchedule
+  with
+    feeAdmin : Party
+    subscriptionFeeBps : Decimal
+    conversionFeeBps : Decimal
+    managementFeeBps : Decimal
+  where
+    signatory feeAdmin
+
+
+template MintPolicy
+  with
+    mintPolicyAdmin : Party
+    mintingEnabled : Bool
+    elasticFeeActive : Bool
+    elasticFeeBps : Decimal
+    maxNavAgeSeconds : Int
+  where
+    signatory mintPolicyAdmin

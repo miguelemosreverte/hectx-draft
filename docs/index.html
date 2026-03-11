@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>First Implementation Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root { color-scheme: light; }
+      body {
+        font-family: "Georgia", "Times New Roman", Times, serif;
+        background: #f7f4ee;
+        color: #111;
+      }
+      .wsj-page {
+        min-height: 100vh;
+        background: #f7f4ee;
+      }
+      .wsj-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2.5rem 1rem 4rem;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1.25rem;
+        align-items: start;
+      }
+      @media (min-width: 1024px) {
+        .wsj-container {
+          grid-template-columns: 240px minmax(0, 1fr);
+          align-items: start;
+        }
+      }
+      .masthead {
+        border-bottom: 1px solid #111;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.25rem;
+      }
+      .kicker {
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.16em;
+        color: #444;
+      }
+      .lede {
+        font-size: 1.05rem;
+        color: #222;
+        margin-top: 0.3rem;
+      }
+      h1, h2, h3, h4 {
+        font-family: "Times New Roman", Times, serif;
+        letter-spacing: 0.2px;
+      }
+      h1 { font-size: 2.6rem; line-height: 1.1; margin-bottom: 0.5rem; }
+      h2 {
+        font-size: 2.1rem;
+        margin: 3.6rem 0 1.4rem;
+        padding: 0.85rem 1rem;
+        background: #f0ece4;
+        border-left: 6px solid #111;
+        border-top: 2px solid #111;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      h3 {
+        font-size: 1.5rem;
+        margin: 2.4rem 0 1.1rem;
+        padding-left: 0.7rem;
+        border-left: 4px solid #111;
+        font-weight: 800;
+      }
+      p { line-height: 1.75; font-size: 0.95rem; margin: 0.8rem 0 1.2rem; }
+      pre {
+        background: #f1eee7;
+        color: #111;
+        padding: 0.85rem 1rem;
+        border-radius: 6px;
+        overflow-x: auto;
+        border: 1px solid #e1ddd3;
+      }
+      code {
+        font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.95rem;
+      }
+      ul { list-style: disc; margin-left: 1.5rem; line-height: 1.7; }
+      ol { list-style: decimal; margin-left: 1.5rem; line-height: 1.7; }
+      blockquote {
+        border-left: 3px solid #111;
+        padding: 0.6rem 0.9rem;
+        color: #333;
+        margin: 1.1rem 0;
+        background: #f5f1e9;
+      }
+      a { color: #111; text-decoration: underline; }
+      hr { border: none; border-top: 1px solid #111; margin: 2rem 0; }
+      .toc-wrap {
+        position: sticky;
+        top: 0.75rem;
+        height: calc(100vh - 1.5rem);
+        align-self: start;
+      }
+      .toc-card {
+        background: #fff;
+        border: 1px solid #e1ddd3;
+        border-radius: 6px;
+        padding: 0.9rem 1rem;
+        box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+        height: 100%;
+        overflow-y: auto;
+      }
+      .toc-title {
+        font-weight: 700;
+        font-size: 0.85rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #333;
+        margin-bottom: 0.5rem;
+      }
+      .toc-list { list-style: none; padding-left: 0; margin-left: 0; }
+      .toc-list li { margin: 0.3rem 0; }
+      .toc-list a { text-decoration: none; color: #333; }
+      .toc-list a:hover { text-decoration: underline; }
+      .content-card {
+        background: #fff;
+        border: 1px solid #e1ddd3;
+        border-radius: 8px;
+        padding: 2rem 2.25rem 2.5rem;
+        box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+      }
+      .content-card > h2 { scroll-margin-top: 1.5rem; }
+      .content-card h2:first-of-type { margin-top: 2.6rem; }
+      .content-card h2 + h3 { margin-top: 1.8rem; }
+      .content-card h2 + p { margin-top: 1.2rem; }
+      .content-card h2 + ul,
+      .content-card h2 + ol { margin-top: 0.8rem; }
+      .content-card h2 + * { margin-top: 1.1rem; }
+      .content-card h2:not(:first-of-type) { margin-top: 4.2rem; }
+      .content-card h3 + p { margin-top: 0.8rem; }
+      .content-card h3 + ul,
+      .content-card h3 + ol { margin-top: 0.6rem; }
+      .content-card h3 + * { margin-top: 0.7rem; }
+      .content-card h3:not(:first-of-type) { margin-top: 2.8rem; }
+      .hero {
+        display: grid;
+        gap: 1rem;
+        margin: 0.75rem 0 1.25rem;
+      }
+      @media (min-width: 900px) {
+        .hero { grid-template-columns: 1.2fr 1fr; }
+      }
+      .hero-card {
+        background: #f7f4ee;
+        border: 1px solid #e1ddd3;
+        border-radius: 8px;
+        padding: 1rem 1.1rem;
+      }
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.6rem;
+      }
+      .stat {
+        background: #fff;
+        border: 1px solid #e1ddd3;
+        border-radius: 6px;
+        padding: 0.65rem 0.8rem;
+      }
+      .stat .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #555; }
+      .stat .value { font-size: 1rem; font-weight: 700; color: #111; margin-top: 0.2rem; }
+      .callouts {
+        display: grid;
+        gap: 0.6rem;
+        margin: 0.85rem 0 1rem;
+      }
+      @media (min-width: 900px) {
+        .callouts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      }
+      .callout {
+        border: 1px solid #e1ddd3;
+        border-radius: 6px;
+        padding: 0.75rem 0.9rem;
+        background: #fff;
+      }
+      .callout h4 { font-size: 1rem; margin-bottom: 0.35rem; }
+      .color-grid {
+        display: grid;
+        gap: 0.75rem;
+        margin: 1.2rem 0 1.2rem;
+      }
+      @media (min-width: 900px) {
+        .color-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      }
+      .color-block {
+        border-radius: 8px;
+        padding: 0.9rem 1rem;
+        border: 1px solid #e1ddd3;
+      }
+      .color-block h4 { font-size: 0.95rem; margin-bottom: 0.35rem; }
+      .cb-mint { background: #eaf2ff; }
+      .cb-transfer { background: #f5efe0; }
+      .cb-compliance { background: #eef7ee; }
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0.5rem 0 1rem;
+        font-size: 0.95rem;
+      }
+      .table th, .table td {
+        border: 1px solid #e1ddd3;
+        padding: 0.5rem 0.65rem;
+        text-align: left;
+      }
+      .table th { background: #f7f4ee; font-weight: 700; }
+      @media (max-width: 1023px) { .toc-card { position: static; } }
+      @media (max-width: 640px) {
+        h1 { font-size: 2.1rem; }
+        h2 { font-size: 1.45rem; }
+        h3 { font-size: 1.2rem; }
+        .content-card { padding: 1.5rem; }
+        .stat-grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body class="wsj-page">
+    <div class="wsj-container">
+      <aside class="toc-wrap">
+        
+  <div class="toc-card">
+    <div class="toc-title">Contents</div>
+    <ul class="toc-list"><li class=""><a href="#overview">Overview</a></li>
+<li class=""><a href="#body">Body</a></li>
+<li class=""><a href="#1-executive-summary">1. Executive Summary</a></li>
+<li class="pl-4"><a href="#11-scope-and-outcome">1.1 Scope And Outcome</a></li>
+<li class="pl-4"><a href="#12-verified-outcomes">1.2 Verified Outcomes</a></li>
+<li class="pl-4"><a href="#13-constraint-to-revisit">1.3 Constraint To Revisit</a></li>
+<li class=""><a href="#2-architecture-overview-highlevel">2. Architecture Overview (High‑Level)</a></li>
+<li class="pl-4"><a href="#21-components">2.1 Components</a></li>
+<li class="pl-4"><a href="#22-architecture-map">2.2 Architecture Map</a></li>
+<li class="pl-4"><a href="#23-system-responsibilities">2.3 System Responsibilities</a></li>
+<li class=""><a href="#3-ledger-model-midlevel">3. Ledger Model (Mid‑Level)</a></li>
+<li class="pl-4"><a href="#31-policies">3.1 Policies</a></li>
+<li class="pl-4"><a href="#32-registry">3.2 Registry</a></li>
+<li class="pl-4"><a href="#33-compliance">3.3 Compliance</a></li>
+<li class="pl-4"><a href="#34-nav-and-supply">3.4 NAV And Supply</a></li>
+<li class="pl-4"><a href="#35-contract-keys-and-maintainers">3.5 Contract Keys And Maintainers</a></li>
+<li class=""><a href="#4-minting-flow-lowlevel">4. Minting Flow (Low‑Level)</a></li>
+<li class="pl-4"><a href="#41-contracts">4.1 Contracts</a></li>
+<li class="pl-4"><a href="#42-approval-logic">4.2 Approval Logic</a></li>
+<li class="pl-4"><a href="#43-fee-computation">4.3 Fee Computation</a></li>
+<li class=""><a href="#5-holdings-lowlevel">5. Holdings (Low‑Level)</a></li>
+<li class="pl-4"><a href="#51-template">5.1 Template</a></li>
+<li class="pl-4"><a href="#52-behavior">5.2 Behavior</a></li>
+<li class=""><a href="#6-transfers-lowlevel">6. Transfers (Low‑Level)</a></li>
+<li class="pl-4"><a href="#61-implemented-paths">6.1 Implemented Paths</a></li>
+<li class="pl-4"><a href="#62-directtransfer-semantics">6.2 DirectTransfer Semantics</a></li>
+<li class="pl-4"><a href="#63-transfer-invariants">6.3 Transfer Invariants</a></li>
+<li class=""><a href="#7-services-and-automation">7. Services And Automation</a></li>
+<li class="pl-4"><a href="#71-json-api-scripts">7.1 JSON API Scripts</a></li>
+<li class="pl-4"><a href="#72-buildtest-scripts">7.2 Build/Test Scripts</a></li>
+<li class="pl-4"><a href="#73-local-test-execution">7.3 Local Test Execution</a></li>
+<li class=""><a href="#8-verification">8. Verification</a></li>
+<li class="pl-4"><a href="#81-test-scenario">8.1 Test Scenario</a></li>
+<li class="pl-4"><a href="#82-evidence">8.2 Evidence</a></li>
+<li class="pl-4"><a href="#83-observed-warnings">8.3 Observed Warnings</a></li>
+<li class=""><a href="#9-artifacts-concrete-files">9. Artifacts (Concrete Files)</a></li>
+<li class="pl-4"><a href="#91-daml-modules">9.1 Daml Modules</a></li>
+<li class="pl-4"><a href="#92-services">9.2 Services</a></li>
+<li class="pl-4"><a href="#93-automation">9.3 Automation</a></li>
+<li class=""><a href="#10-next-iteration-targets">10. Next Iteration Targets</a></li>
+<li class=""><a href="#references">References</a></li></ul>
+  </div>
+
+      </aside>
+      <main class="content-card">
+        <div class="masthead">
+          <div class="kicker">First Implementation</div>
+          <h1>HectX Prototype Report</h1>
+          <div class="lede">Daml + Splice Token Standard — from overview to ledger‑level detail</div>
+        </div>
+
+        <section class="hero">
+          <div class="hero-card">
+            <p><strong>HectX</strong> is a Daml‑native tokenized fund prototype implemented on the Splice token standard. The system is complete and locally verified, covering policy enforcement, compliance, NAV updates, minting, holdings, and transfer flows.</p>
+          </div>
+          <div class="stat-grid">
+            <div class="stat"><div class="label">Status</div><div class="value">Verified Locally</div></div>
+            <div class="stat"><div class="label">Flow</div><div class="value">Mint → Transfer</div></div>
+            <div class="stat"><div class="label">Ledger Model</div><div class="value">Daml + Splice</div></div>
+            <div class="stat"><div class="label">Test Date</div><div class="value">Mar 11, 2026</div></div>
+          </div>
+        </section>
+
+        <section class="callouts">
+          <div class="callout"><h4>What Works</h4><p>Mint request → approval → holdings created; admin‑mediated transfer updates balances.</p></div>
+          <div class="callout"><h4>Verified Path</h4><p>Policies + NAV → Mint → DirectTransfer → Post‑transfer assertions.</p></div>
+          <div class="callout"><h4>Constraint</h4><p>Splice interface transfer path implemented but not stable in this environment.</p></div>
+        </section>
+
+        <section class="color-grid">
+          <div class="color-block cb-mint">
+            <h4>Minting</h4>
+            <p>Policy‑gated approvals, fee computation, supply updates, holdings creation.</p>
+          </div>
+          <div class="color-block cb-transfer">
+            <h4>Transfers</h4>
+            <p>Admin‑mediated direct transfer, compliance checks, holdings archival and outputs.</p>
+          </div>
+          <div class="color-block cb-compliance">
+            <h4>Compliance</h4>
+            <p>Participant eligibility + wallet approvals enforced across mint and transfer.</p>
+          </div>
+        </section>
+
+        <h1 id="first-implementation-report">First Implementation Report</h1><blockquote>
+<p><strong>Status:</strong> Working end‑to‑end prototype validated by local automated tests (March 11, 2026).<br><strong>Scope:</strong> Daml ledger model + Splice token standard + JSON API automation.</p>
+</blockquote>
+<h2 id="overview">Overview</h2><p>HectX is a Daml‑native tokenized fund prototype built on the Splice token standard. This report moves from high‑level system intent to low‑level ledger implementation. It captures the verified execution path, the concrete artifacts created, and the automated test evidence that confirms the system works locally.</p>
+<h2 id="body">Body</h2><h2 id="1-executive-summary">1. Executive Summary</h2><h3 id="11-scope-and-outcome">1.1 Scope And Outcome</h3><ul>
+<li>Full ledger model: policies, compliance, NAV, minting, holdings, transfers.</li>
+<li>Working mint‑to‑transfer flow with automated local tests.</li>
+<li>JSON API scripts for admin and minting operations.</li>
+</ul>
+<h3 id="12-verified-outcomes">1.2 Verified Outcomes</h3><ul>
+<li><strong>Minting:</strong> Request → approval → supply update → holdings created.</li>
+<li><strong>Transfers:</strong> Admin‑mediated direct transfer with compliance checks.</li>
+<li><strong>Testing:</strong> End‑to‑end script execution passes locally.</li>
+</ul>
+<h3 id="13-constraint-to-revisit">1.3 Constraint To Revisit</h3><p>The Splice <code>TransferFactory_Transfer</code> interface is implemented but not the stable path in this environment. The verified path uses a direct, admin‑mediated transfer choice.</p>
+<h2 id="2-architecture-overview-highlevel">2. Architecture Overview (High‑Level)</h2><h3 id="21-components">2.1 Components</h3><ul>
+<li><strong>Ledger Model (Daml):</strong> authoritative logic and state.</li>
+<li><strong>Token Standard (Splice):</strong> interfaces/types for holdings and transfers.</li>
+<li><strong>JSON API Services:</strong> off‑ledger automation.</li>
+<li><strong>Automation:</strong> build/test scripts for verification.</li>
+</ul>
+<h3 id="22-architecture-map">2.2 Architecture Map</h3><pre><code>┌───────────────┐       ┌───────────────────────┐
+│ JSON API      │──────▶│ Daml Ledger (HectX)   │
+│ Scripts       │       │ - Policy             │
+│ - admin.ts    │       │ - Compliance          │
+│ - mint.ts     │       │ - NAV/Supply          │
+└───────────────┘       │ - Minting             │
+                        │ - Holdings            │
+                        │ - Transfers           │
+                        └───────────────────────┘
+                                   ▲
+                                   │
+                        ┌───────────────────────┐
+                        │ Splice Token Standard │
+                        │ - HoldingV1           │
+                        │ - TransferInstruction │
+                        └───────────────────────┘
+</code></pre>
+<h3 id="23-system-responsibilities">2.3 System Responsibilities</h3><ul>
+<li><strong>Policy enforcement:</strong> NAV freshness, mint toggle, fee computation.</li>
+<li><strong>Compliance enforcement:</strong> eligibility + wallet approvals for senders/receivers.</li>
+<li><strong>State integrity:</strong> holdings, supply, and registry consistency.</li>
+</ul>
+<h2 id="3-ledger-model-midlevel">3. Ledger Model (Mid‑Level)</h2><h3 id="31-policies">3.1 Policies</h3><ul>
+<li><code>EligibilityPolicy</code> for jurisdiction restrictions.</li>
+<li><code>FeeSchedule</code> for subscription/conversion/management fees.</li>
+<li><code>MintPolicy</code> for mint toggle, elastic fee, NAV staleness limit.</li>
+</ul>
+<h3 id="32-registry">3.2 Registry</h3><ul>
+<li><code>HectXRegistry</code> binds instrument ID to policy contract IDs.</li>
+<li>Registry anchors minting by providing policy CIDs and instrument metadata.</li>
+</ul>
+<h3 id="33-compliance">3.3 Compliance</h3><ul>
+<li><code>Participant</code> keyed by <code>(admin, party)</code>.</li>
+<li><code>WalletApproval</code> keyed by <code>(admin, owner)</code>.</li>
+<li>Observers ensure visibility for both sender and receiver.</li>
+</ul>
+<h3 id="34-nav-and-supply">3.4 NAV And Supply</h3><ul>
+<li><code>NAVSnapshot</code> keyed by admin for freshness enforcement.</li>
+<li><code>Supply</code> keyed by admin and updated on mint.</li>
+</ul>
+<h3 id="35-contract-keys-and-maintainers">3.5 Contract Keys And Maintainers</h3><ul>
+<li>Compliance keys use admin as maintainer to avoid ambiguous authority.</li>
+<li>Holdings are issued by admin and observed by owners.</li>
+</ul>
+<h2 id="4-minting-flow-lowlevel">4. Minting Flow (Low‑Level)</h2><h3 id="41-contracts">4.1 Contracts</h3><ul>
+<li><code>MintRequest</code></li>
+<li><code>MintReceipt</code></li>
+</ul>
+<h3 id="42-approval-logic">4.2 Approval Logic</h3><ul>
+<li>Validates minting enabled and NAV freshness.</li>
+<li>Verifies eligibility and wallet approval.</li>
+<li>Computes fees, net amount, and minted tokens.</li>
+<li>Updates supply and creates holdings.</li>
+</ul>
+<h3 id="43-fee-computation">4.3 Fee Computation</h3><ul>
+<li>Subscription and conversion fees are basis‑point driven.</li>
+<li>Elastic fee can be applied when market price exceeds NAV.</li>
+</ul>
+<h2 id="5-holdings-lowlevel">5. Holdings (Low‑Level)</h2><h3 id="51-template">5.1 Template</h3><p><code>HectXHolding</code>:</p>
+<ul>
+<li>Signatory: issuer (admin)</li>
+<li>Observer: owner (investor)</li>
+<li>Metadata: mint time and NAV per token</li>
+</ul>
+<h3 id="52-behavior">5.2 Behavior</h3><p>Holdings are created on mint and updated on transfer by archiving inputs and creating output holdings.</p>
+<h2 id="6-transfers-lowlevel">6. Transfers (Low‑Level)</h2><h3 id="61-implemented-paths">6.1 Implemented Paths</h3><ul>
+<li><code>TransferFactory_Transfer</code>: implemented per Splice interface (unstable here).</li>
+<li><code>DirectTransfer</code>: admin‑mediated path used in verified tests.</li>
+</ul>
+<h3 id="62-directtransfer-semantics">6.2 DirectTransfer Semantics</h3><ul>
+<li>Validates compliance for sender and receiver.</li>
+<li>Verifies ownership and sufficient balance.</li>
+<li>Archives input holdings.</li>
+<li>Creates receiver holdings and sender change holdings.</li>
+</ul>
+<h3 id="63-transfer-invariants">6.3 Transfer Invariants</h3><ul>
+<li>Sum of output holdings equals sum of input holdings.</li>
+<li>Ownership and instrument ID consistency are enforced.</li>
+</ul>
+<h2 id="7-services-and-automation">7. Services And Automation</h2><h3 id="71-json-api-scripts">7.1 JSON API Scripts</h3><ul>
+<li><code>hectx-services/src/admin.ts</code></li>
+<li><code>hectx-services/src/mint.ts</code></li>
+</ul>
+<h3 id="72-buildtest-scripts">7.2 Build/Test Scripts</h3><ul>
+<li><code>scripts/build-splice-dars.sh</code></li>
+<li><code>scripts/build-daml.sh</code></li>
+<li><code>scripts/test-daml.sh</code></li>
+</ul>
+<h3 id="73-local-test-execution">7.3 Local Test Execution</h3><ul>
+<li>Tests compile Splice DARs and HectX DAR before running.</li>
+<li>The script runs in <code>--ide-ledger</code> mode to validate logic locally.</li>
+</ul>
+<h2 id="8-verification">8. Verification</h2><h3 id="81-test-scenario">8.1 Test Scenario</h3><ol>
+<li>Create policies, NAV, supply, compliance records.</li>
+<li>Submit and approve mint request.</li>
+<li>Assert Alice holdings.</li>
+<li>Execute transfer to Bob.</li>
+<li>Assert Bob holdings and Alice change.</li>
+</ol>
+<h3 id="82-evidence">8.2 Evidence</h3><pre><code>./scripts/test-daml.sh
+Result: PASS (March 11, 2026)
+</code></pre>
+<h3 id="83-observed-warnings">8.3 Observed Warnings</h3><ul>
+<li>Redundant imports and unused values.</li>
+<li>Script packaging advisory warnings.</li>
+</ul>
+<h2 id="9-artifacts-concrete-files">9. Artifacts (Concrete Files)</h2><h3 id="91-daml-modules">9.1 Daml Modules</h3><ul>
+<li><code>hectx-daml/daml/HectX/Types.daml</code></li>
+<li><code>hectx-daml/daml/HectX/Policy.daml</code></li>
+<li><code>hectx-daml/daml/HectX/Compliance.daml</code></li>
+<li><code>hectx-daml/daml/HectX/NAV.daml</code></li>
+<li><code>hectx-daml/daml/HectX/Registry.daml</code></li>
+<li><code>hectx-daml/daml/HectX/Holding.daml</code></li>
+<li><code>hectx-daml/daml/HectX/Minting.daml</code></li>
+<li><code>hectx-daml/daml/HectX/Transfers.daml</code></li>
+<li><code>hectx-daml/daml/HectX/Tests.daml</code></li>
+</ul>
+<h3 id="92-services">9.2 Services</h3><ul>
+<li><code>hectx-services/src/jsonApi.ts</code></li>
+<li><code>hectx-services/src/mint.ts</code></li>
+<li><code>hectx-services/src/admin.ts</code></li>
+</ul>
+<h3 id="93-automation">9.3 Automation</h3><ul>
+<li><code>scripts/build-splice-dars.sh</code></li>
+<li><code>scripts/build-daml.sh</code></li>
+<li><code>scripts/test-daml.sh</code></li>
+</ul>
+<h2 id="10-next-iteration-targets">10. Next Iteration Targets</h2><ul>
+<li>Stabilize <code>TransferFactory_Transfer</code> interface path.</li>
+<li>Expand interface‑level transfer test coverage.</li>
+<li>Split scripts into a dedicated Daml package to remove script dependency warnings.</li>
+</ul>
+<h2 id="references">References</h2><ul>
+<li>Ledger logic: <code>hectx-daml/daml/HectX/</code></li>
+<li>Transfer logic: <code>hectx-daml/daml/HectX/Transfers.daml</code></li>
+<li>Mint logic: <code>hectx-daml/daml/HectX/Minting.daml</code></li>
+<li>Holding model: <code>hectx-daml/daml/HectX/Holding.daml</code></li>
+<li>Tests: <code>hectx-daml/daml/HectX/Tests.daml</code></li>
+<li>Token standard: <code>vendor/splice/</code></li>
+<li>JSON API services: <code>hectx-services/src/</code></li>
+<li>Build/test scripts: <code>scripts/</code></li>
+</ul>
+
+
+        <section>
+          <h2>Artifacts Summary</h2>
+          <table class="table">
+            <thead><tr><th>Area</th><th>Key Files</th></tr></thead>
+            <tbody>
+              <tr><td>Daml Ledger</td><td><code>hectx-daml/daml/HectX/*</code></td></tr>
+              <tr><td>Transfers</td><td><code>hectx-daml/daml/HectX/Transfers.daml</code></td></tr>
+              <tr><td>Minting</td><td><code>hectx-daml/daml/HectX/Minting.daml</code></td></tr>
+              <tr><td>Holdings</td><td><code>hectx-daml/daml/HectX/Holding.daml</code></td></tr>
+              <tr><td>Tests</td><td><code>hectx-daml/daml/HectX/Tests.daml</code></td></tr>
+              <tr><td>JSON API</td><td><code>hectx-services/src/*</code></td></tr>
+              <tr><td>Automation</td><td><code>scripts/*</code></td></tr>
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
