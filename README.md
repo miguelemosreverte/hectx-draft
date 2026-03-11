@@ -41,9 +41,7 @@ The report is published as `docs/index.html`. Enable Pages in repo settings:
 
 Once enabled, the report is available at:
 
-```
-https://miguelemosreverte.github.io/hectx-draft/
-```
+<https://lambda-ecom.github.io/hectx-draft/>
 
 ## Notes
 
