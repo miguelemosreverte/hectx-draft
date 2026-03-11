@@ -122,15 +122,11 @@ test_HectX_Mint_And_Transfer = script do
   let tfVisibleIds = map (._1) tfVisible
   assertMsg "transfer factory not visible to sender" (elem tf tfVisibleIds)
 
-  _ <- submit admin do
-    exerciseCmd tf Ping
-
-  _ <- submit admin do
-    exerciseCmd tf DirectTransfer with
-      sender = alice
-      receiver = bob
-      amount = 100.0
-      inputHoldingCids = [aliceHoldingCid]
+  _ <- submitMulti [alice, admin] [] do
+    exerciseCmd tf TransferFactory_Transfer with
+      expectedAdmin = admin
+      transfer
+      extraArgs
 
   bobHoldings <- query @HectXHolding admin
   let bobForInstr = [ (cid, h) | (cid, h) <- bobHoldings, h.owner == bob && h.instrumentId == instrumentId ]
