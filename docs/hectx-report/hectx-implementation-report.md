@@ -3,6 +3,44 @@
 > **Status:** Working end‑to‑end prototype validated by local automated tests (March 11, 2026).  
 > **Scope:** Daml ledger model + Splice token standard + JSON API automation.
 
+<div class="masthead">
+  <div class="kicker">First Implementation</div>
+  <div class="lede">Daml + Splice Token Standard — from overview to ledger‑level detail</div>
+</div>
+
+<section class="hero">
+  <div class="hero-card">
+    <p><strong>HectX</strong> is a Daml‑native tokenized fund prototype implemented on the Splice token standard. The system is complete and locally verified, covering policy enforcement, compliance, NAV updates, minting, holdings, and transfer flows.</p>
+  </div>
+  <div class="stat-grid">
+    <div class="stat"><div class="label">Status</div><div class="value">Verified Locally</div></div>
+    <div class="stat"><div class="label">Flow</div><div class="value">Mint → Transfer</div></div>
+    <div class="stat"><div class="label">Ledger Model</div><div class="value">Daml + Splice</div></div>
+    <div class="stat"><div class="label">Test Date</div><div class="value">Mar 11, 2026</div></div>
+  </div>
+</section>
+
+<section class="callouts">
+  <div class="callout"><h4>What Works</h4><p>Mint request → approval → holdings created; interface transfer updates balances.</p></div>
+  <div class="callout"><h4>Verified Path</h4><p>Policies + NAV → Mint → TransferFactory_Transfer → Post‑transfer assertions.</p></div>
+  <div class="callout"><h4>Time Rule</h4><p><code>requestedAt</code> must be in the past relative to ledger time; tests use a fixed past timestamp.</p></div>
+</section>
+
+<section class="color-grid">
+  <div class="color-block cb-mint">
+    <h4>Minting</h4>
+    <p>Policy‑gated approvals, fee computation, supply updates, holdings creation.</p>
+  </div>
+  <div class="color-block cb-transfer">
+    <h4>Transfers</h4>
+    <p>Splice interface transfer, compliance checks, holdings archival and outputs.</p>
+  </div>
+  <div class="color-block cb-compliance">
+    <h4>Compliance</h4>
+    <p>Participant eligibility + wallet approvals enforced across mint and transfer.</p>
+  </div>
+</section>
+
 ## Overview
 HectX is a Daml‑native tokenized fund prototype built on the Splice token standard. This report moves from high‑level system intent to low‑level ledger implementation. It captures the verified execution path, the concrete artifacts created, and the automated test evidence that confirms the system works locally.
 
@@ -207,3 +245,19 @@ Result: PASS (March 12, 2026)
 - Token standard: `vendor/splice/`
 - JSON API services: `hectx-services/src/`
 - Build/test scripts: `scripts/`
+
+<section>
+  <h2>Artifacts Summary</h2>
+  <table class="table">
+    <thead><tr><th>Area</th><th>Key Files</th></tr></thead>
+    <tbody>
+      <tr><td>Daml Ledger</td><td><code>hectx-daml/daml/HectX/*</code></td></tr>
+      <tr><td>Transfers</td><td><code>hectx-daml/daml/HectX/Transfers.daml</code></td></tr>
+      <tr><td>Minting</td><td><code>hectx-daml/daml/HectX/Minting.daml</code></td></tr>
+      <tr><td>Holdings</td><td><code>hectx-daml/daml/HectX/Holding.daml</code></td></tr>
+      <tr><td>Tests</td><td><code>hectx-daml/daml/HectX/Tests.daml</code></td></tr>
+      <tr><td>JSON API</td><td><code>hectx-services/src/*</code></td></tr>
+      <tr><td>Automation</td><td><code>scripts/*</code></td></tr>
+    </tbody>
+  </table>
+</section>
