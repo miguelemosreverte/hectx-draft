@@ -299,9 +299,9 @@ const html = `<!doctype html>
         </section>
 
         <section class=\"callouts\">
-          <div class=\"callout\"><h4>What Works</h4><p>Mint request → approval → holdings created; admin‑mediated transfer updates balances.</p></div>
-          <div class=\"callout\"><h4>Verified Path</h4><p>Policies + NAV → Mint → DirectTransfer → Post‑transfer assertions.</p></div>
-          <div class=\"callout\"><h4>Constraint</h4><p>Splice interface transfer path implemented but not stable in this environment.</p></div>
+          <div class=\"callout\"><h4>What Works</h4><p>Mint request → approval → holdings created; interface transfer updates balances.</p></div>
+          <div class=\"callout\"><h4>Verified Path</h4><p>Policies + NAV → Mint → TransferFactory_Transfer → Post‑transfer assertions.</p></div>
+          <div class=\"callout\"><h4>Time Rule</h4><p><code>requestedAt</code> must be in the past relative to ledger time; tests use a fixed past timestamp.</p></div>
         </section>
 
         <section class=\"color-grid\">
@@ -311,7 +311,7 @@ const html = `<!doctype html>
           </div>
           <div class=\"color-block cb-transfer\">
             <h4>Transfers</h4>
-            <p>Admin‑mediated direct transfer, compliance checks, holdings archival and outputs.</p>
+            <p>Splice interface transfer, compliance checks, holdings archival and outputs.</p>
           </div>
           <div class=\"color-block cb-compliance\">
             <h4>Compliance</h4>

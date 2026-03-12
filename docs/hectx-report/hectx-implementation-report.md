@@ -109,11 +109,10 @@ Holdings are created on mint and updated on transfer by archiving inputs and cre
 
 ## 6. Transfers (Low‑Level)
 
-### 6.1 Implemented Paths
-- `TransferFactory_Transfer`: implemented per Splice interface (unstable here).
-- `DirectTransfer`: admin‑mediated path used in verified tests.
+### 6.1 Implemented Path
+- `TransferFactory_Transfer`: implemented per Splice interface and used in automated tests.
 
-### 6.2 DirectTransfer Semantics
+### 6.2 TransferFactory_Transfer Semantics
 - Validates compliance for sender and receiver.
 - Verifies ownership and sufficient balance.
 - Archives input holdings.

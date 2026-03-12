@@ -252,8 +252,8 @@
 <li class="pl-4"><a href="#51-template">5.1 Template</a></li>
 <li class="pl-4"><a href="#52-behavior">5.2 Behavior</a></li>
 <li class=""><a href="#6-transfers-lowlevel">6. Transfers (Low‑Level)</a></li>
-<li class="pl-4"><a href="#61-implemented-paths">6.1 Implemented Paths</a></li>
-<li class="pl-4"><a href="#62-directtransfer-semantics">6.2 DirectTransfer Semantics</a></li>
+<li class="pl-4"><a href="#61-implemented-path">6.1 Implemented Path</a></li>
+<li class="pl-4"><a href="#62-transferfactorytransfer-semantics">6.2 TransferFactory_Transfer Semantics</a></li>
 <li class="pl-4"><a href="#63-transfer-invariants">6.3 Transfer Invariants</a></li>
 <li class=""><a href="#7-services-and-automation">7. Services And Automation</a></li>
 <li class="pl-4"><a href="#71-json-api-scripts">7.1 JSON API Scripts</a></li>
@@ -293,9 +293,9 @@
         </section>
 
         <section class="callouts">
-          <div class="callout"><h4>What Works</h4><p>Mint request → approval → holdings created; admin‑mediated transfer updates balances.</p></div>
-          <div class="callout"><h4>Verified Path</h4><p>Policies + NAV → Mint → DirectTransfer → Post‑transfer assertions.</p></div>
-          <div class="callout"><h4>Constraint</h4><p>Splice interface transfer path implemented but not stable in this environment.</p></div>
+          <div class="callout"><h4>What Works</h4><p>Mint request → approval → holdings created; interface transfer updates balances.</p></div>
+          <div class="callout"><h4>Verified Path</h4><p>Policies + NAV → Mint → TransferFactory_Transfer → Post‑transfer assertions.</p></div>
+          <div class="callout"><h4>Time Rule</h4><p><code>requestedAt</code> must be in the past relative to ledger time; tests use a fixed past timestamp.</p></div>
         </section>
 
         <section class="color-grid">
@@ -305,7 +305,7 @@
           </div>
           <div class="color-block cb-transfer">
             <h4>Transfers</h4>
-            <p>Admin‑mediated direct transfer, compliance checks, holdings archival and outputs.</p>
+            <p>Splice interface transfer, compliance checks, holdings archival and outputs.</p>
           </div>
           <div class="color-block cb-compliance">
             <h4>Compliance</h4>
@@ -399,11 +399,10 @@
 <li>Metadata: mint time and NAV per token</li>
 </ul>
 <h3 id="52-behavior">5.2 Behavior</h3><p>Holdings are created on mint and updated on transfer by archiving inputs and creating output holdings.</p>
-<h2 id="6-transfers-lowlevel">6. Transfers (Low‑Level)</h2><h3 id="61-implemented-paths">6.1 Implemented Paths</h3><ul>
-<li><code>TransferFactory_Transfer</code>: implemented per Splice interface (unstable here).</li>
-<li><code>DirectTransfer</code>: admin‑mediated path used in verified tests.</li>
+<h2 id="6-transfers-lowlevel">6. Transfers (Low‑Level)</h2><h3 id="61-implemented-path">6.1 Implemented Path</h3><ul>
+<li><code>TransferFactory_Transfer</code>: implemented per Splice interface and used in automated tests.</li>
 </ul>
-<h3 id="62-directtransfer-semantics">6.2 DirectTransfer Semantics</h3><ul>
+<h3 id="62-transferfactorytransfer-semantics">6.2 TransferFactory_Transfer Semantics</h3><ul>
 <li>Validates compliance for sender and receiver.</li>
 <li>Verifies ownership and sufficient balance.</li>
 <li>Archives input holdings.</li>
