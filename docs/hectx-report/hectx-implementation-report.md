@@ -17,11 +17,11 @@ HectX is a Daml‑native tokenized fund prototype built on the Splice token stan
 
 ### 1.2 Verified Outcomes
 - **Minting:** Request → approval → supply update → holdings created.
-- **Transfers:** Admin‑mediated direct transfer with compliance checks.
+- **Transfers:** Token Standard `TransferFactory_Transfer` path (sender‑controlled, admin‑signed).
 - **Testing:** End‑to‑end script execution passes locally.
 
-### 1.3 Constraint To Revisit
-The Splice `TransferFactory_Transfer` interface is implemented but not the stable path in this environment. The verified path uses a direct, admin‑mediated transfer choice.
+### 1.3 Time Constraint (Documented)
+`Transfer.requestedAt` must be **in the past** relative to ledger time. In IDE‑ledger tests, script time can be ahead of ledger time, so `requestedAt = getTime` may fail. The test sets `requestedAt` to a fixed historical timestamp to ensure validity.
 
 ## 2. Architecture Overview (High‑Level)
 
@@ -134,7 +134,12 @@ Holdings are created on mint and updated on transfer by archiving inputs and cre
 - `scripts/build-daml.sh`
 - `scripts/test-daml.sh`
 
-### 7.3 Local Test Execution
+### 7.3 Interactive Demo
+- `docs/demo/index.html` (interactive mint → transfer walkthrough)
+- `docs/demo/app.js`
+- `docs/demo/styles.css`
+
+### 7.4 Local Test Execution
 - Tests compile Splice DARs and HectX DAR before running.
 - The script runs in `--ide-ledger` mode to validate logic locally.
 
@@ -144,7 +149,7 @@ Holdings are created on mint and updated on transfer by archiving inputs and cre
 1. Create policies, NAV, supply, compliance records.
 2. Submit and approve mint request.
 3. Assert Alice holdings.
-4. Execute transfer to Bob.
+4. Execute transfer to Bob via `TransferFactory_Transfer`.
 5. Assert Bob holdings and Alice change.
 
 ### 8.2 Evidence
@@ -181,7 +186,6 @@ Result: PASS (March 11, 2026)
 - `scripts/test-daml.sh`
 
 ## 10. Next Iteration Targets
-- Stabilize `TransferFactory_Transfer` interface path.
 - Expand interface‑level transfer test coverage.
 - Split scripts into a dedicated Daml package to remove script dependency warnings.
 
