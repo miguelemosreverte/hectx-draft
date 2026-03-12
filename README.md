@@ -7,7 +7,7 @@ High-level documentation, implementation notes, and reports for the HECTX projec
 - `docs/`  — Documentation and reports. GitHub Pages serves `docs/index.html`.
 - `docs/hectx-report/` — "First Implementation" report (Markdown, HTML, PNG).
 - `scripts/` — Report rendering and screenshot tools.
-- `hectx-daml/` — Daml sources and related assets.
+- `hectx-daml/` — Daml sources and related assets. These are first-class source code (ledger model and choices) and must be versioned and reviewed like application code.
 - `hectx-services/` — Service layer scaffolding and helpers.
 - `vendor/` — External dependencies (submodule: `hyperledger-labs/splice`).
 
