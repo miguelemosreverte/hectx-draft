@@ -423,13 +423,18 @@
 <li><code>scripts/test-daml.sh</code></li>
 </ul>
 <h3 id="73-interactive-demo">7.3 Interactive Demo</h3><ul>
-<li><code>docs/demo/index.html</code> (interactive mint → transfer walkthrough)</li>
+<li><code>docs/demo/index.html</code> (live JSON API demo)</li>
 <li><code>docs/demo/app.js</code></li>
 <li><code>docs/demo/styles.css</code></li>
+<li><code>hectx-services/src/demo-server.ts</code></li>
 </ul>
 <h3 id="74-local-test-execution">7.4 Local Test Execution</h3><ul>
 <li>Tests compile Splice DARs and HectX DAR before running.</li>
 <li>The script runs in <code>--ide-ledger</code> mode to validate logic locally.</li>
+<li>Demo E2E checks run against live JSON API using Hurl.<ul>
+<li><code>scripts/demo-e2e.sh</code> starts localnet, runs the demo server, executes Hurl, and shuts down.</li>
+</ul>
+</li>
 </ul>
 <h2 id="8-verification">8. Verification</h2><h3 id="81-test-scenario">8.1 Test Scenario</h3><ol>
 <li>Create policies, NAV, supply, compliance records.</li>
@@ -440,6 +445,10 @@
 </ol>
 <h3 id="82-evidence">8.2 Evidence</h3><pre><code>./scripts/test-daml.sh
 Result: PASS (March 11, 2026)
+</code></pre>
+<pre><code>cd hectx-services
+npm run test:demo
+Result: PASS (March 12, 2026)
 </code></pre>
 <h3 id="83-observed-warnings">8.3 Observed Warnings</h3><ul>
 <li>Redundant imports and unused values.</li>
@@ -465,6 +474,7 @@ Result: PASS (March 11, 2026)
 <li><code>scripts/build-splice-dars.sh</code></li>
 <li><code>scripts/build-daml.sh</code></li>
 <li><code>scripts/test-daml.sh</code></li>
+<li><code>hectx-services/tests/demo.hurl</code></li>
 </ul>
 <h2 id="10-next-iteration-targets">10. Next Iteration Targets</h2><ul>
 <li>Expand interface‑level transfer test coverage.</li>

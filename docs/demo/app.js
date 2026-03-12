@@ -27,6 +27,16 @@ const log = (line) => {
   logEl.scrollTop = logEl.scrollHeight;
 };
 
+const api = async (path, opts = {}) => {
+  const res = await fetch(path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok === false) {
+    const msg = data.error ?? `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
+};
+
 const setList = (el, rows) => {
   el.innerHTML = "";
   rows.forEach((row) => {
@@ -71,6 +81,16 @@ const renderStatus = () => {
   renderHoldings();
 };
 
+const refreshFromLedger = async () => {
+  const status = await api("/api/status");
+  if (!status.ready) return;
+  if (status.balances) {
+    state.holdings.Alice = status.balances.alice ?? 0;
+    state.holdings.Bob = status.balances.bob ?? 0;
+  }
+  renderStatus();
+};
+
 const reset = () => {
   state.policies = false;
   state.compliance = false;
@@ -84,66 +104,64 @@ const reset = () => {
   renderStatus();
 };
 
-const stepSetup = () => {
+const stepSetup = async () => {
+  const res = await api("/api/setup", { method: "POST" });
   state.policies = true;
   state.compliance = true;
-  log("Policies and compliance records created.");
-  renderStatus();
+  log(`Policies and compliance records created. Registry=${res.registryCid}`);
+  await refreshFromLedger();
 };
 
-const stepMintRequest = () => {
+const stepMintRequest = async () => {
   if (!state.policies) {
     log("Cannot mint request: policies not initialized.");
     return;
   }
+  const res = await api("/api/mint", { method: "POST" });
   state.mintRequested = true;
-  log("Mint request submitted by Alice.");
-  renderStatus();
-};
-
-const stepMintApprove = () => {
-  if (!state.mintRequested) {
-    log("Cannot approve mint: request missing.");
-    return;
-  }
   state.mintApproved = true;
-  state.holdings.Alice = 1000;
-  log("Mint approved. Alice receives 1000 HECTX.");
-  renderStatus();
+  log(`Mint approved. Request=${res.requestCid}`);
+  await refreshFromLedger();
 };
 
-const stepTransfer = () => {
+const stepMintApprove = async () => {
+  log("Mint approval happens in the same API call as mint request.");
+};
+
+const stepTransfer = async () => {
   if (!state.mintApproved) {
     log("Cannot transfer: holdings not minted.");
     return;
   }
-  if (state.holdings.Alice < 100) {
-    log("Transfer blocked: insufficient funds.");
-    return;
-  }
-  state.holdings.Alice -= 100;
-  state.holdings.Bob += 100;
+  await api("/api/transfer", { method: "POST" });
   state.transferComplete = true;
   log("Transfer executed via TransferFactory_Transfer (sender + admin sign).");
-  renderStatus();
+  await refreshFromLedger();
 };
 
-document.getElementById("run-all").addEventListener("click", () => {
-  stepSetup();
-  stepMintRequest();
-  stepMintApprove();
-  stepTransfer();
+document.getElementById("run-all").addEventListener("click", async () => {
+  try {
+    await stepSetup();
+    await stepMintRequest();
+    await stepTransfer();
+  } catch (err) {
+    log(`Error: ${err.message}`);
+  }
 });
 
 document.getElementById("reset").addEventListener("click", reset);
 
 document.querySelectorAll(".step").forEach((btn) => {
-  btn.addEventListener("click", () => {
+  btn.addEventListener("click", async () => {
     const step = btn.dataset.step;
-    if (step === "setup") stepSetup();
-    if (step === "mint-request") stepMintRequest();
-    if (step === "mint-approve") stepMintApprove();
-    if (step === "transfer") stepTransfer();
+    try {
+      if (step === "setup") await stepSetup();
+      if (step === "mint-request") await stepMintRequest();
+      if (step === "mint-approve") await stepMintApprove();
+      if (step === "transfer") await stepTransfer();
+    } catch (err) {
+      log(`Error: ${err.message}`);
+    }
   });
 });
 
