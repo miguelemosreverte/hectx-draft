@@ -100,6 +100,17 @@ code {
   margin-bottom: 1rem;
 }
 
+.pill {
+  display: inline-block;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border);
+  background: #f6efe3;
+  margin-bottom: 0.75rem;
+}
+
 button {
   border: 1px solid var(--ink);
   background: transparent;

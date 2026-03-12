@@ -12,6 +12,12 @@ export PARTY_HINT=${PARTY_HINT:-hectx-localparty-1}
 
 cd "$LOCALNET_DIR"
 
+set -a
+set +u
+source "$LOCALNET_ENV_DIR/common.env"
+set -u
+set +a
+
 docker compose \
   --env-file compose.env \
   -f compose.yaml \
@@ -19,4 +25,3 @@ docker compose \
   --profile app-provider \
   --profile sv \
   up -d
-

@@ -11,6 +11,12 @@ export DOCKER_NETWORK=${DOCKER_NETWORK:-hectx-localnet}
 
 cd "$LOCALNET_DIR"
 
+set -a
+set +u
+source "$LOCALNET_ENV_DIR/common.env"
+set -u
+set +a
+
 docker compose \
   --env-file compose.env \
   -f compose.yaml \

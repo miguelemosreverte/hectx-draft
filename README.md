@@ -32,6 +32,33 @@ Take a full-page screenshot:
 npm run screenshot:report
 ```
 
+## Live Demo (JSON API + Docker)
+
+The demo UI is now backed by a live JSON API server. It requires the Splice localnet docker environment.
+
+Start the localnet and run the demo server (Colima supported):
+
+```bash
+./scripts/demo-run.sh
+```
+
+Open the demo UI:
+
+```bash
+open http://localhost:5177
+```
+
+The demo server talks to the localnet JSON API at `http://json-ledger-api.localhost:2000`.
+
+Run end‑to‑end demo checks (Hurl):
+
+```bash
+brew install hurl
+./scripts/demo-e2e.sh
+```
+
+The E2E script starts localnet, runs the demo server, executes the Hurl lifecycle test, and shuts everything down.
+
 ## GitHub Pages
 
 The report is published as `docs/index.html`. Enable Pages in repo settings:

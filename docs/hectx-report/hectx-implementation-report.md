@@ -135,13 +135,16 @@ Holdings are created on mint and updated on transfer by archiving inputs and cre
 - `scripts/test-daml.sh`
 
 ### 7.3 Interactive Demo
-- `docs/demo/index.html` (interactive mint → transfer walkthrough)
+- `docs/demo/index.html` (live JSON API demo)
 - `docs/demo/app.js`
 - `docs/demo/styles.css`
+- `hectx-services/src/demo-server.ts`
 
 ### 7.4 Local Test Execution
 - Tests compile Splice DARs and HectX DAR before running.
 - The script runs in `--ide-ledger` mode to validate logic locally.
+- Demo E2E checks run against live JSON API using Hurl.
+  - `scripts/demo-e2e.sh` starts localnet, runs the demo server, executes Hurl, and shuts down.
 
 ## 8. Verification
 
@@ -156,6 +159,12 @@ Holdings are created on mint and updated on transfer by archiving inputs and cre
 ```
 ./scripts/test-daml.sh
 Result: PASS (March 11, 2026)
+```
+
+```
+cd hectx-services
+npm run test:demo
+Result: PASS (March 12, 2026)
 ```
 
 ### 8.3 Observed Warnings
@@ -184,6 +193,7 @@ Result: PASS (March 11, 2026)
 - `scripts/build-splice-dars.sh`
 - `scripts/build-daml.sh`
 - `scripts/test-daml.sh`
+- `hectx-services/tests/demo.hurl`
 
 ## 10. Next Iteration Targets
 - Expand interface‑level transfer test coverage.

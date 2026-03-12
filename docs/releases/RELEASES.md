@@ -6,6 +6,7 @@
 - Local test run confirmed passing via `./scripts/test-daml.sh`.
 - Splice token‑standard packages aligned to SDK `3.4.11` in the submodule to make builds reproducible with public SDKs.
 - Report updated to remove the transfer caveat and document the ledger time constraint.
+- Demo UI now calls a live JSON API backend (`hectx-services/src/demo-server.ts`) instead of a mock.
 
 ## 1.0 (March 11, 2026)
 - Initial “First Implementation” report created and published to GitHub Pages.
