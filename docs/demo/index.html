@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HECTX Demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div>
+        <div class="eyebrow">HECTX DEMO</div>
+        <h1>Mint → Transfer Flow</h1>
+        <p class="lede">
+          Interactive walkthrough of the same scenario exercised by the automated Daml test.
+          This demo mirrors the ledger steps: policy setup, mint request, approval, holdings creation,
+          and a Token Standard transfer.
+        </p>
+      </div>
+      <div class="hero-meta">
+        <div>
+          <div class="meta-label">Instrument</div>
+          <div class="meta-value" id="instrument-id">HECTX</div>
+        </div>
+        <div>
+          <div class="meta-label">Admin</div>
+          <div class="meta-value" id="admin-party">Hecto</div>
+        </div>
+        <div>
+          <div class="meta-label">Ledger Mode</div>
+          <div class="meta-value">IDE Ledger</div>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel controls">
+        <h2>Scenario Controls</h2>
+        <div class="button-row">
+          <button class="primary" id="run-all">Run Full Scenario</button>
+          <button id="reset">Reset</button>
+        </div>
+        <div class="steps">
+          <button class="step" data-step="setup">1. Setup Policies & Compliance</button>
+          <button class="step" data-step="mint-request">2. Create Mint Request</button>
+          <button class="step" data-step="mint-approve">3. Approve Mint</button>
+          <button class="step" data-step="transfer">4. Transfer 100 HECTX</button>
+        </div>
+        <div class="note">
+          <strong>Time rule:</strong> `requestedAt` must be in the past relative to ledger time.
+          The demo uses <code>1970-01-01T00:00:00Z</code> to satisfy this rule.
+        </div>
+      </section>
+
+      <section class="panel status">
+        <h2>Ledger Status</h2>
+        <div class="status-grid">
+          <div class="card">
+            <div class="card-title">Compliance</div>
+            <ul id="compliance-list"></ul>
+          </div>
+          <div class="card">
+            <div class="card-title">Minting</div>
+            <ul id="minting-list"></ul>
+          </div>
+          <div class="card">
+            <div class="card-title">Holdings</div>
+            <div class="holdings" id="holdings"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Transfer</div>
+            <ul id="transfer-list"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel log">
+        <h2>Ledger Log</h2>
+        <div class="log-output" id="log"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      Demo is derived from <code>HectX.Tests</code> and the Token Standard transfer flow.
+    </footer>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

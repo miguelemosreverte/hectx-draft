@@ -233,7 +233,7 @@
 <li class=""><a href="#1-executive-summary">1. Executive Summary</a></li>
 <li class="pl-4"><a href="#11-scope-and-outcome">1.1 Scope And Outcome</a></li>
 <li class="pl-4"><a href="#12-verified-outcomes">1.2 Verified Outcomes</a></li>
-<li class="pl-4"><a href="#13-constraint-to-revisit">1.3 Constraint To Revisit</a></li>
+<li class="pl-4"><a href="#13-time-constraint-documented">1.3 Time Constraint (Documented)</a></li>
 <li class=""><a href="#2-architecture-overview-highlevel">2. Architecture Overview (High‑Level)</a></li>
 <li class="pl-4"><a href="#21-components">2.1 Components</a></li>
 <li class="pl-4"><a href="#22-architecture-map">2.2 Architecture Map</a></li>
@@ -258,7 +258,8 @@
 <li class=""><a href="#7-services-and-automation">7. Services And Automation</a></li>
 <li class="pl-4"><a href="#71-json-api-scripts">7.1 JSON API Scripts</a></li>
 <li class="pl-4"><a href="#72-buildtest-scripts">7.2 Build/Test Scripts</a></li>
-<li class="pl-4"><a href="#73-local-test-execution">7.3 Local Test Execution</a></li>
+<li class="pl-4"><a href="#73-interactive-demo">7.3 Interactive Demo</a></li>
+<li class="pl-4"><a href="#74-local-test-execution">7.4 Local Test Execution</a></li>
 <li class=""><a href="#8-verification">8. Verification</a></li>
 <li class="pl-4"><a href="#81-test-scenario">8.1 Test Scenario</a></li>
 <li class="pl-4"><a href="#82-evidence">8.2 Evidence</a></li>
@@ -323,10 +324,10 @@
 </ul>
 <h3 id="12-verified-outcomes">1.2 Verified Outcomes</h3><ul>
 <li><strong>Minting:</strong> Request → approval → supply update → holdings created.</li>
-<li><strong>Transfers:</strong> Admin‑mediated direct transfer with compliance checks.</li>
+<li><strong>Transfers:</strong> Token Standard <code>TransferFactory_Transfer</code> path (sender‑controlled, admin‑signed).</li>
 <li><strong>Testing:</strong> End‑to‑end script execution passes locally.</li>
 </ul>
-<h3 id="13-constraint-to-revisit">1.3 Constraint To Revisit</h3><p>The Splice <code>TransferFactory_Transfer</code> interface is implemented but not the stable path in this environment. The verified path uses a direct, admin‑mediated transfer choice.</p>
+<h3 id="13-time-constraint-documented">1.3 Time Constraint (Documented)</h3><p><code>Transfer.requestedAt</code> must be <strong>in the past</strong> relative to ledger time. In IDE‑ledger tests, script time can be ahead of ledger time, so <code>requestedAt = getTime</code> may fail. The test sets <code>requestedAt</code> to a fixed historical timestamp to ensure validity.</p>
 <h2 id="2-architecture-overview-highlevel">2. Architecture Overview (High‑Level)</h2><h3 id="21-components">2.1 Components</h3><ul>
 <li><strong>Ledger Model (Daml):</strong> authoritative logic and state.</li>
 <li><strong>Token Standard (Splice):</strong> interfaces/types for holdings and transfers.</li>
@@ -421,7 +422,12 @@
 <li><code>scripts/build-daml.sh</code></li>
 <li><code>scripts/test-daml.sh</code></li>
 </ul>
-<h3 id="73-local-test-execution">7.3 Local Test Execution</h3><ul>
+<h3 id="73-interactive-demo">7.3 Interactive Demo</h3><ul>
+<li><code>docs/demo/index.html</code> (interactive mint → transfer walkthrough)</li>
+<li><code>docs/demo/app.js</code></li>
+<li><code>docs/demo/styles.css</code></li>
+</ul>
+<h3 id="74-local-test-execution">7.4 Local Test Execution</h3><ul>
 <li>Tests compile Splice DARs and HectX DAR before running.</li>
 <li>The script runs in <code>--ide-ledger</code> mode to validate logic locally.</li>
 </ul>
@@ -429,7 +435,7 @@
 <li>Create policies, NAV, supply, compliance records.</li>
 <li>Submit and approve mint request.</li>
 <li>Assert Alice holdings.</li>
-<li>Execute transfer to Bob.</li>
+<li>Execute transfer to Bob via <code>TransferFactory_Transfer</code>.</li>
 <li>Assert Bob holdings and Alice change.</li>
 </ol>
 <h3 id="82-evidence">8.2 Evidence</h3><pre><code>./scripts/test-daml.sh
@@ -461,7 +467,6 @@ Result: PASS (March 11, 2026)
 <li><code>scripts/test-daml.sh</code></li>
 </ul>
 <h2 id="10-next-iteration-targets">10. Next Iteration Targets</h2><ul>
-<li>Stabilize <code>TransferFactory_Transfer</code> interface path.</li>
 <li>Expand interface‑level transfer test coverage.</li>
 <li>Split scripts into a dedicated Daml package to remove script dependency warnings.</li>
 </ul>
