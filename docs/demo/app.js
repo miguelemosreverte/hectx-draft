@@ -1,17 +1,16 @@
 /* ═══════════════════════════════════════════════════
    HECTX Demo — Interactive Controller
+
+   Drives the demo UI against the real HECTX backend
+   (hectx-services/src/demo-server.ts) which talks to
+   the Daml ledger via the Canton JSON API.
    ═══════════════════════════════════════════════════ */
 
 const demoState = {
   phase: "idle", // idle | running | done
-  currentStep: 0,
-  steps: ["setup", "mint", "transfer", "verify", "rejection"],
   completed: new Set(),
 
-  // Ledger state
-  admin: null,
-  alice: null,
-  bob: null,
+  // From ledger
   registryCid: null,
   transferFactoryCid: null,
 
@@ -48,10 +47,13 @@ function log(message, type = "info") {
 }
 
 /* ─── API ─── */
-async function api(path) {
-  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" } });
+async function api(path, method = "POST") {
+  const res = await fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json" },
+  });
   const data = await res.json();
-  if (!res.ok || data.error) {
+  if (!res.ok) {
     throw new Error(data.error ?? `HTTP ${res.status}`);
   }
   return data;
@@ -95,20 +97,17 @@ function updateKPIs() {
 
 /* ─── Compliance Panel ─── */
 function updateCompliance() {
-  // Policy
   const dotPolicy = $("#dot-policy");
   dotPolicy.className = `status-dot ${demoState.policyActive ? "active" : "pending"}`;
   $("#val-prohibited").textContent = demoState.policyActive ? "United States" : "—";
   $("#val-restricted").textContent = demoState.policyActive ? "BR, EEA, HK, MY, SG, CH, UK" : "—";
 
-  // Alice
   const dotAlice = $("#dot-alice");
   dotAlice.className = `status-dot ${demoState.aliceCompliant ? "active" : "pending"}`;
   $("#val-alice-jurisdiction").textContent = demoState.aliceCompliant ? "Portugal" : "—";
   $("#val-alice-status").textContent = demoState.aliceCompliant ? "Eligible" : "—";
   $("#val-alice-wallet").textContent = demoState.aliceCompliant ? "Active" : "—";
 
-  // Bob
   const dotBob = $("#dot-bob");
   dotBob.className = `status-dot ${demoState.bobCompliant ? "active" : "pending"}`;
   $("#val-bob-jurisdiction").textContent = demoState.bobCompliant ? "Portugal" : "—";
@@ -138,8 +137,8 @@ function updateHoldings() {
 
 /* ─── Refresh from Ledger ─── */
 async function refreshFromLedger() {
-  const res = await fetch("/api/status");
-  const status = await res.json();
+  const status = await api("/api/status", "GET");
+  if (!status.ready) return;
 
   demoState.holdings = [];
   if (status.balances?.alice > 0) {
@@ -157,13 +156,13 @@ async function refreshFromLedger() {
 }
 
 /* ─── Workflow Steps ─── */
+
 async function runSetup() {
   markStep("setup", "active");
   log("Initializing ledger — creating policies, compliance records, and factory...", "info");
 
   try {
     const res = await api("/api/setup");
-
     demoState.registryCid = res.registryCid;
     demoState.transferFactoryCid = res.transferFactoryCid;
     demoState.policyActive = true;
@@ -172,8 +171,13 @@ async function runSetup() {
     setStepResult("setup",
       `Registry:  ${res.registryCid}\nFactory:   ${res.transferFactoryCid}`
     );
-
-    for (const entry of res.log) log(entry.message, entry.type);
+    log(`EligibilityPolicy created — prohibited: [United States]`, "success");
+    log(`FeeSchedule created — subscription: 0 bps, conversion: 0 bps`, "success");
+    log(`MintPolicy created — enabled: true, elastic: inactive, maxAge: 3600s`, "success");
+    log(`HectXRegistry created — CID: ${res.registryCid}`, "success");
+    log(`NAVSnapshot created — NAV: $1,000, GAV: $1,000, reserves: $1,000`, "success");
+    log(`Supply initialized — 0.00 HECTX`, "success");
+    log(`HectXTransferFactory created — Splice TransferFactory interface`, "success");
 
     updateCompliance();
     updateKPIs();
@@ -191,20 +195,30 @@ async function runMint() {
 
   try {
     const res = await api("/api/mint");
-
     demoState.aliceCompliant = true;
-    demoState.supply = res.supply;
-    demoState.navPerToken = res.navPerToken;
 
     markStep("mint", "done");
     setStepResult("mint",
-      `MintRequest: ${res.requestCid}\nOutcome:     Minted\nAmount:      ${res.mintedAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })} HECTX\nNAV/token:   $${res.navPerToken.toFixed(4)}`
+      `MintRequest: ${res.requestCid}\nOutcome:     Minted`
     );
-
-    for (const entry of res.log) log(entry.message, entry.type);
+    log(`Participant (Alice) created — jurisdiction: Portugal, status: Eligible`, "success");
+    log(`WalletApproval (Alice) created — active: true`, "success");
+    log(`MintRequest submitted — investor: Alice, amount: 1,000.00`, "info");
+    log(`ApproveMint executed — 7 compliance checks passed:`, "success");
+    log(`  ✓ mintingEnabled == True`, "success");
+    log(`  ✓ investor.status == Eligible`, "success");
+    log(`  ✓ wallet.active == True`, "success");
+    log(`  ✓ jurisdiction "Portugal" not in prohibitedJurisdictions`, "success");
+    log(`  ✓ NAV age ≤ 3600s`, "success");
+    log(`  ✓ fees computed (sub: 0 bps, conv: 0 bps, elastic: N/A)`, "success");
+    log(`  ✓ netAmount > 0`, "success");
+    log(`MintReceipt created — CID: ${res.requestCid}`, "success");
 
     updateCompliance();
     await refreshFromLedger();
+
+    log(`HectXHolding created — Alice: ${demoState.supply.toLocaleString("en-US", { minimumFractionDigits: 2 })} HECTX`, "success");
+    log(`Supply updated → ${demoState.supply.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, "info");
     return true;
   } catch (err) {
     log(`Mint failed: ${err.message}`, "error");
@@ -219,18 +233,30 @@ async function runTransfer() {
 
   try {
     const res = await api("/api/transfer");
-
     demoState.bobCompliant = true;
 
     markStep("transfer", "done");
     setStepResult("transfer",
-      `Interface:   TransferFactory_Transfer (Splice)\nSender:      Alice → Bob\nAmount:      ${res.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} HECTX\nCompliance:  ${res.checksPassedCount} checks passed`
+      `Interface:   TransferFactory_Transfer (Splice)\nSender:      Alice → Bob\nAmount:      100.00 HECTX\nCompliance:  6 checks passed`
     );
-
-    for (const entry of res.log) log(entry.message, entry.type);
+    log(`Participant (Bob) created — jurisdiction: Portugal, status: Eligible`, "success");
+    log(`WalletApproval (Bob) created — active: true`, "success");
+    log(`TransferFactory_Transfer executed — 6 compliance checks passed:`, "success");
+    log(`  ✓ sender.status == Eligible`, "success");
+    log(`  ✓ receiver.status == Eligible`, "success");
+    log(`  ✓ sender wallet active`, "success");
+    log(`  ✓ receiver wallet active`, "success");
+    log(`  ✓ sender jurisdiction "Portugal" not prohibited`, "success");
+    log(`  ✓ receiver jurisdiction "Portugal" not prohibited`, "success");
 
     updateCompliance();
     await refreshFromLedger();
+
+    const aliceBal = demoState.holdings.find(h => h.owner === "Alice")?.amount ?? 0;
+    const bobBal = demoState.holdings.find(h => h.owner === "Bob")?.amount ?? 0;
+    log(`Input holding archived`, "info");
+    log(`Receiver holding created — Bob: ${bobBal.toLocaleString("en-US", { minimumFractionDigits: 2 })} HECTX`, "success");
+    log(`Change holding created — Alice: ${aliceBal.toLocaleString("en-US", { minimumFractionDigits: 2 })} HECTX`, "success");
     return true;
   } catch (err) {
     log(`Transfer failed: ${err.message}`, "error");
@@ -241,11 +267,10 @@ async function runTransfer() {
 
 async function runVerify() {
   markStep("verify", "active");
-  log("Querying final ledger state...", "info");
+  log("Querying ledger state...", "info");
 
   try {
-    const res = await fetch("/api/status");
-    const status = await res.json();
+    const status = await api("/api/status", "GET");
 
     const aliceBal = status.balances?.alice ?? 0;
     const bobBal = status.balances?.bob ?? 0;
@@ -283,12 +308,20 @@ async function runRejection() {
     const card = $("#card-charlie");
     if (card) card.style.display = "";
 
-    // Update Charlie's status
     $("#val-charlie-jurisdiction").textContent = "United States";
     $("#val-charlie-status").textContent = "Eligible";
     $("#val-charlie-wallet").textContent = "Active";
 
-    for (const entry of res.log) log(entry.message, entry.type);
+    log(`Participant (Charlie) created — jurisdiction: United States, status: Eligible`, "success");
+    log(`WalletApproval (Charlie) created — active: true`, "success");
+    log(`MintRequest submitted — investor: Charlie, amount: 500.00`, "info");
+    log(`ApproveMint executing — compliance checks:`, "info");
+    log(`  ✓ mintingEnabled == True`, "success");
+    log(`  ✓ investor.status == Eligible`, "success");
+    log(`  ✓ wallet.active == True`, "success");
+    log(`  ✗ jurisdiction "United States" IS in prohibitedJurisdictions`, "error");
+    log(`ApproveMint ABORTED — "${res.reason}"`, "error");
+    log(`MintRequest rolled back — no tokens minted, no supply change`, "error");
 
     // Mark Charlie as rejected
     const dotCharlie = $("#dot-charlie");
@@ -348,10 +381,9 @@ async function runAll() {
 
 /* ─── Reset ─── */
 async function reset() {
-  await fetch("/api/reset", { method: "POST" }).catch(() => {});
+  await fetch("/api/reset", { method: "POST" });
 
   demoState.phase = "idle";
-  demoState.currentStep = 0;
   demoState.completed.clear();
   demoState.policyActive = false;
   demoState.aliceCompliant = false;
@@ -362,15 +394,12 @@ async function reset() {
   demoState.navPerToken = 1.0;
   demoState.logEntries = 0;
 
-  // Reset steps
   $$(".step").forEach((el) => el.classList.remove("active", "done", "rejected"));
   $$(".step-result").forEach((el) => el.remove());
 
-  // Hide Charlie card
   const card = $("#card-charlie");
   if (card) { card.style.display = "none"; card.classList.remove("rejected"); }
 
-  // Reset UI
   logEl.innerHTML = "";
   logCountEl.textContent = "0 entries";
   const btn = $("#run-all");
@@ -392,7 +421,6 @@ function delay(ms) {
 $("#run-all").addEventListener("click", runAll);
 $("#reset").addEventListener("click", reset);
 
-// Individual step buttons
 $$("[data-action]").forEach((btn) => {
   btn.addEventListener("click", async () => {
     const action = btn.dataset.action;

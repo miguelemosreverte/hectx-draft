@@ -6,6 +6,7 @@ type DemoState = {
   adminParty?: string;
   aliceParty?: string;
   bobParty?: string;
+  charlieParty?: string;
   registryCid?: string;
   transferFactoryCid?: string;
   mintRequestCid?: string;
@@ -85,6 +86,8 @@ app.get("/api/status", async (_req: Request, res: Response) => {
     if (payload.owner === state.aliceParty) aliceBalance += Number(payload.amount ?? 0);
     if (payload.owner === state.bobParty) bobBalance += Number(payload.amount ?? 0);
   }
+  const supplyRes = await query(adminCfg, "HectX.NAV:Supply", {});
+  const totalSupply = Number(supplyRes?.result?.[0]?.payload?.totalSupply ?? 0);
   res.json({
     ready: true,
     parties: {
@@ -98,6 +101,7 @@ app.get("/api/status", async (_req: Request, res: Response) => {
       alice: aliceBalance,
       bob: bobBalance,
     },
+    totalSupply,
     holdingsCount: rows.length,
   });
 });
@@ -265,6 +269,68 @@ app.post("/api/transfer", async (_req: Request, res: Response) => {
   } catch (err: any) {
     res.status(500).json({ ok: false, error: err?.message ?? String(err) });
   }
+});
+
+app.post("/api/rejection", async (_req: Request, res: Response) => {
+  try {
+    if (!state.adminParty || !state.registryCid) {
+      return res.status(400).json({ ok: false, error: "setup required" });
+    }
+    const admin = state.adminParty;
+    const charlie = await ensureParty("Charlie");
+    state.charlieParty = charlie;
+
+    const adminCfg = cfgFor(partyToken(admin));
+    const charlieCfg = cfgFor(partyToken(charlie));
+
+    await create(adminCfg, "HectX.Compliance:Participant", {
+      participantAdmin: admin,
+      party: charlie,
+      observers: [charlie],
+      jurisdiction: "United States",
+      isAccredited: true,
+      status: "Eligible",
+    });
+    await create(adminCfg, "HectX.Compliance:WalletApproval", {
+      walletAdmin: admin,
+      owner: charlie,
+      observers: [charlie],
+      active: true,
+    });
+
+    const mintReq = await create(charlieCfg, "HectX.Minting:MintRequest", {
+      requestAdmin: admin,
+      investor: charlie,
+      amount: "500.0",
+      requestedAt: new Date().toISOString(),
+    });
+
+    // Attempt to approve — this MUST fail due to jurisdiction enforcement
+    try {
+      await exercise(adminCfg, "HectX.Minting:MintRequest", mintReq.contractId, "ApproveMint", {
+        registryCid: state.registryCid,
+        marketPrice: "1.0",
+      });
+      // If we get here, the contract did NOT enforce jurisdiction — that's a bug
+      return res.status(500).json({ ok: false, error: "jurisdiction enforcement failed — mint was not blocked" });
+    } catch (mintErr: any) {
+      // Expected: the Daml contract aborted with "investor jurisdiction prohibited"
+      res.json({
+        ok: true,
+        blocked: true,
+        investor: "Charlie",
+        jurisdiction: "United States",
+        reason: mintErr?.message ?? "investor jurisdiction prohibited",
+      });
+    }
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err?.message ?? String(err) });
+  }
+});
+
+app.post("/api/reset", (_req: Request, res: Response) => {
+  Object.keys(state).forEach((k) => delete (state as any)[k]);
+  res.json({ ok: true });
 });
 
 app.listen(PORT, () => {

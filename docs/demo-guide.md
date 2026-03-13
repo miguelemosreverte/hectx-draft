@@ -19,16 +19,30 @@
 
 ### Running the Demo
 
-The demo runs a Node.js backend that models the Daml ledger — creating contracts, enforcing compliance checks, and tracking holdings in memory. This is the recommended mode for client presentations.
+The demo runs against a real Daml ledger on the Canton Network via the Splice localnet (Docker). The TypeScript backend talks to the JSON API to create and exercise actual Daml contracts.
 
 ```bash
-# From the project root
-node docs/demo/server.cjs
+# Start the Splice localnet + demo server
+./scripts/demo-run.sh
 ```
 
-Then navigate to `http://localhost:8080` in your browser.
+This brings up the Canton network in Docker, builds the TypeScript service layer, and starts the demo server on `http://localhost:5177`.
 
-The server provides both the UI and the API endpoints (`/api/setup`, `/api/mint`, `/api/transfer`, `/api/status`, `/api/rejection`). Each API call creates real contract objects in the in-memory ledger, runs compliance checks, and returns results that drive the UI.
+Each API call (`/api/setup`, `/api/mint`, `/api/transfer`, `/api/rejection`) creates real contracts on the ledger, exercises real Daml choices, and enforces the actual smart contract compliance logic.
+
+### Running the E2E Test
+
+```bash
+# Runs the full demo lifecycle against the real ledger and validates with Hurl
+./scripts/demo-e2e.sh
+```
+
+Or, if the demo server is already running:
+
+```bash
+cd hectx-services
+hurl --test --variable base_url=http://localhost:5177 tests/demo.hurl
+```
 
 ### Taking Screenshots
 
