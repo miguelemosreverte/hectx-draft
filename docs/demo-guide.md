@@ -17,25 +17,18 @@
 
 ## Quick Start
 
-### Static Demo (No Ledger Required)
+### Running the Demo
 
-The demo works entirely as static HTML/CSS/JS. This is the recommended mode for client presentations.
+The demo runs a Node.js backend that models the Daml ledger — creating contracts, enforcing compliance checks, and tracking holdings in memory. This is the recommended mode for client presentations.
 
 ```bash
 # From the project root
-cd docs/demo
-
-# Option 1: Python simple server
-python3 -m http.server 8080
-
-# Option 2: Node.js http-server
-npx http-server -p 8080
-
-# Option 3: Open directly in browser
-open index.html
+node docs/demo/server.cjs
 ```
 
 Then navigate to `http://localhost:8080` in your browser.
+
+The server provides both the UI and the API endpoints (`/api/setup`, `/api/mint`, `/api/transfer`, `/api/status`, `/api/rejection`). Each API call creates real contract objects in the in-memory ledger, runs compliance checks, and returns results that drive the UI.
 
 ### Taking Screenshots
 
