@@ -3,86 +3,368 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>HECTX Demo</title>
+    <title>HECTX — Interactive Demo</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header class="hero">
-      <div>
-        <div class="eyebrow">HECTX DEMO</div>
-        <h1>Mint → Transfer Flow</h1>
-        <p class="lede">
-          Interactive walkthrough of the same scenario exercised by the automated Daml test.
-          This demo mirrors the ledger steps: policy setup, mint request, approval, holdings creation,
-          and a Token Standard transfer.
-        </p>
+
+    <!-- ─── Top Bar ─── -->
+    <header class="topbar">
+      <div class="topbar-brand">
+        <span class="brand-mark">HX</span>
+        <span class="brand-name">HECTX</span>
+        <span class="brand-sep">|</span>
+        <span class="brand-tagline">Canton Network Demo</span>
       </div>
-      <div class="hero-meta">
-        <div>
-          <div class="meta-label">Instrument</div>
-          <div class="meta-value" id="instrument-id">HECTX</div>
-        </div>
-        <div>
-          <div class="meta-label">Admin</div>
-          <div class="meta-value" id="admin-party">Hecto</div>
-        </div>
-        <div>
-          <div class="meta-label">Ledger Mode</div>
-          <div class="meta-value">IDE Ledger</div>
-        </div>
+      <div class="topbar-badges">
+        <span class="badge badge-outline" id="badge-network">Canton Network</span>
+        <span class="badge badge-outline" id="badge-splice">Splice 0.5.14</span>
+        <span class="badge badge-outline" id="badge-daml">Daml 3.4.11</span>
       </div>
     </header>
 
-    <main class="layout">
-      <section class="panel controls">
-        <h2>Scenario Controls</h2>
-        <div class="pill">Live JSON API Demo</div>
-        <div class="button-row">
-          <button class="primary" id="run-all">Run Full Scenario</button>
-          <button id="reset">Reset</button>
+    <!-- ─── Hero ─── -->
+    <section class="hero">
+      <div class="hero-content">
+        <h1>NAV-Based Tokenized Fund</h1>
+        <p class="hero-sub">End-to-end demonstration of the HECTX smart contract lifecycle: compliance-gated minting, NAV-based pricing, and Splice Token Standard transfers on the Canton Network.</p>
+      </div>
+      <div class="hero-kpis">
+        <div class="kpi">
+          <div class="kpi-value" id="kpi-nav">$1,000.00</div>
+          <div class="kpi-label">Net Asset Value</div>
         </div>
-        <div class="steps">
-          <button class="step" data-step="setup">1. Setup Policies & Compliance</button>
-          <button class="step" data-step="mint-request">2. Create Mint Request</button>
-          <button class="step" data-step="mint-approve">3. Approve Mint</button>
-          <button class="step" data-step="transfer">4. Transfer 100 HECTX</button>
+        <div class="kpi">
+          <div class="kpi-value" id="kpi-supply">0</div>
+          <div class="kpi-label">Circulating Supply</div>
         </div>
-        <div class="note">
-          <strong>Time rule:</strong> `requestedAt` must be in the past relative to ledger time.
-          The demo uses <code>1970-01-01T00:00:00Z</code> to satisfy this rule.
+        <div class="kpi">
+          <div class="kpi-value" id="kpi-price">$1.00</div>
+          <div class="kpi-label">NAV per Token</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-value" id="kpi-holders">0</div>
+          <div class="kpi-label">Holdings Count</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Main Layout ─── -->
+    <main class="main">
+
+      <!-- Left: Workflow Panel -->
+      <section class="workflow-panel">
+        <div class="panel-header">
+          <h2>Workflow</h2>
+          <div class="panel-actions">
+            <button class="btn btn-primary" id="run-all">Run All Steps</button>
+            <button class="btn btn-ghost" id="reset">Reset</button>
+          </div>
+        </div>
+
+        <div class="steps" id="steps">
+          <!-- Step 1 -->
+          <div class="step" data-step="setup" id="step-setup">
+            <div class="step-header">
+              <div class="step-number">1</div>
+              <div class="step-info">
+                <div class="step-title">Initialize Ledger</div>
+                <div class="step-desc">Create policies, compliance records, NAV snapshot, and transfer factory</div>
+              </div>
+              <button class="btn btn-sm" data-action="setup">Run</button>
+            </div>
+            <div class="step-detail" id="detail-setup">
+              <div class="step-contracts">
+                <span class="contract-tag">EligibilityPolicy</span>
+                <span class="contract-tag">FeeSchedule</span>
+                <span class="contract-tag">MintPolicy</span>
+                <span class="contract-tag">HectXRegistry</span>
+                <span class="contract-tag">Supply</span>
+                <span class="contract-tag">NAVSnapshot</span>
+                <span class="contract-tag">TransferFactory</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="step" data-step="mint" id="step-mint">
+            <div class="step-header">
+              <div class="step-number">2</div>
+              <div class="step-info">
+                <div class="step-title">Mint HECTX Tokens</div>
+                <div class="step-desc">Alice subscribes 1,000 units — KYC verified, wallet approved, NAV-priced</div>
+              </div>
+              <button class="btn btn-sm" data-action="mint">Run</button>
+            </div>
+            <div class="step-detail" id="detail-mint">
+              <div class="step-contracts">
+                <span class="contract-tag">Participant</span>
+                <span class="contract-tag">WalletApproval</span>
+                <span class="contract-tag">MintRequest</span>
+                <span class="contract-tag">ApproveMint</span>
+                <span class="contract-tag">HectXHolding</span>
+                <span class="contract-tag">MintReceipt</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="step" data-step="transfer" id="step-transfer">
+            <div class="step-header">
+              <div class="step-number">3</div>
+              <div class="step-info">
+                <div class="step-title">Transfer via Splice Standard</div>
+                <div class="step-desc">Alice sends 100 HECTX to Bob — compliance-gated, holdings rebalanced</div>
+              </div>
+              <button class="btn btn-sm" data-action="transfer">Run</button>
+            </div>
+            <div class="step-detail" id="detail-transfer">
+              <div class="step-contracts">
+                <span class="contract-tag">Participant (Bob)</span>
+                <span class="contract-tag">WalletApproval (Bob)</span>
+                <span class="contract-tag">TransferFactory_Transfer</span>
+                <span class="contract-tag">HectXHolding (receiver)</span>
+                <span class="contract-tag">HectXHolding (change)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="step" data-step="verify" id="step-verify">
+            <div class="step-header">
+              <div class="step-number">4</div>
+              <div class="step-info">
+                <div class="step-title">Verify Final State</div>
+                <div class="step-desc">Query ledger — confirm Alice: 900, Bob: 100, supply updated</div>
+              </div>
+              <button class="btn btn-sm" data-action="verify">Run</button>
+            </div>
+            <div class="step-detail" id="detail-verify"></div>
+          </div>
+        </div>
+
+        <!-- Ledger Log -->
+        <div class="log-section">
+          <div class="log-header">
+            <h3>Ledger Log</h3>
+            <span class="log-count" id="log-count">0 entries</span>
+          </div>
+          <div class="log-output" id="log"></div>
         </div>
       </section>
 
-      <section class="panel status">
-        <h2>Ledger Status</h2>
-        <div class="status-grid">
-          <div class="card">
-            <div class="card-title">Compliance</div>
-            <ul id="compliance-list"></ul>
-          </div>
-          <div class="card">
-            <div class="card-title">Minting</div>
-            <ul id="minting-list"></ul>
-          </div>
-          <div class="card">
-            <div class="card-title">Holdings</div>
-            <div class="holdings" id="holdings"></div>
-          </div>
-          <div class="card">
-            <div class="card-title">Transfer</div>
-            <ul id="transfer-list"></ul>
+      <!-- Right: Status Panels -->
+      <section class="status-panels">
+
+        <!-- Compliance Panel -->
+        <div class="panel" id="panel-compliance">
+          <h3>Compliance Status</h3>
+          <div class="compliance-grid" id="compliance-grid">
+            <div class="compliance-card">
+              <div class="cc-header">
+                <span class="cc-icon">&#9632;</span>
+                <span class="cc-title">Eligibility Policy</span>
+                <span class="status-dot pending" id="dot-policy"></span>
+              </div>
+              <div class="cc-body">
+                <div class="cc-row"><span class="cc-label">Prohibited</span><span class="cc-val" id="val-prohibited">—</span></div>
+                <div class="cc-row"><span class="cc-label">Restricted</span><span class="cc-val" id="val-restricted">—</span></div>
+              </div>
+            </div>
+            <div class="compliance-card">
+              <div class="cc-header">
+                <span class="cc-icon">&#9632;</span>
+                <span class="cc-title">Alice</span>
+                <span class="status-dot pending" id="dot-alice"></span>
+              </div>
+              <div class="cc-body">
+                <div class="cc-row"><span class="cc-label">Jurisdiction</span><span class="cc-val" id="val-alice-jurisdiction">—</span></div>
+                <div class="cc-row"><span class="cc-label">Eligibility</span><span class="cc-val" id="val-alice-status">—</span></div>
+                <div class="cc-row"><span class="cc-label">Wallet</span><span class="cc-val" id="val-alice-wallet">—</span></div>
+              </div>
+            </div>
+            <div class="compliance-card">
+              <div class="cc-header">
+                <span class="cc-icon">&#9632;</span>
+                <span class="cc-title">Bob</span>
+                <span class="status-dot pending" id="dot-bob"></span>
+              </div>
+              <div class="cc-body">
+                <div class="cc-row"><span class="cc-label">Jurisdiction</span><span class="cc-val" id="val-bob-jurisdiction">—</span></div>
+                <div class="cc-row"><span class="cc-label">Eligibility</span><span class="cc-val" id="val-bob-status">—</span></div>
+                <div class="cc-row"><span class="cc-label">Wallet</span><span class="cc-val" id="val-bob-wallet">—</span></div>
+              </div>
+            </div>
           </div>
         </div>
-      </section>
 
-      <section class="panel log">
-        <h2>Ledger Log</h2>
-        <div class="log-output" id="log"></div>
+        <!-- Holdings Table -->
+        <div class="panel" id="panel-holdings">
+          <h3>Token Holdings</h3>
+          <table class="holdings-table" id="holdings-table">
+            <thead>
+              <tr>
+                <th>Owner</th>
+                <th>Amount</th>
+                <th>Instrument</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="holdings-body">
+              <tr class="empty-row"><td colspan="4">No holdings — run the workflow to mint tokens</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Architecture Decision Table -->
+        <div class="panel panel-wide" id="panel-architecture">
+          <h3>Architecture Decisions</h3>
+          <p class="panel-subtitle">How each product requirement maps to the on-ledger implementation</p>
+          <table class="arch-table">
+            <thead>
+              <tr>
+                <th>Requirement</th>
+                <th>Source</th>
+                <th>Implementation</th>
+                <th>Source Code</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>NAV-based token pricing</td>
+                <td class="ref">01-product-overview I.a</td>
+                <td>NAVSnapshot feeds pre-mint NAV per token calculation</td>
+                <td class="code-ref">Minting.daml:54</td>
+                <td><span class="status-pill implemented">Implemented</span></td>
+              </tr>
+              <tr>
+                <td>Pre-mint NAV/token = NAV / supply</td>
+                <td class="ref">04-minting-flow III.a</td>
+                <td>Exact formula with zero-supply fallback to 1.0</td>
+                <td class="code-ref">Minting.daml:54</td>
+                <td><span class="status-pill implemented">Implemented</span></td>
+              </tr>
+              <tr>
+                <td>Net subscription = amount - fees</td>
+                <td class="ref">04-minting-flow III.b</td>
+                <td>Subscription + conversion + elastic fees deducted</td>
+                <td class="code-ref">Minting.daml:55-59</td>
+                <td><span class="status-pill implemented">Implemented</span></td>
+              </tr>
+              <tr>
+                <td>Elastic mint fee (1% of premium)</td>
+                <td class="ref">05-pricing V.b-c</td>
+                <td>Conditional on elasticFeeActive; premium = max(0, market - NAV)</td>
+                <td class="code-ref">Minting.daml:57-58</td>
+                <td><span class="status-pill implemented">Implemented</span></td>
+              </tr>
+              <tr>
+                <td>NAV freshness enforcement</td>
+                <td class="ref">05-pricing III.b</td>
+                <td>navAge &le; maxNavAgeSeconds checked at mint</td>
+                <td class="code-ref">Minting.daml:51-52</td>
+                <td><span class="status-pill implemented">Implemented</span></td>
+              </tr>
+              <tr>
+                <td>Investor eligibility gate</td>
+                <td class="ref">03-eligibility IV.b</td>
+                <td>Participant.status == Eligible required at mint and transfer</td>
+                <td class="code-ref">Minting.daml:48</td>
+                <td><span class="status-pill implemented">Implemented</span></td>
+              </tr>
+              <tr>
+                <td>Wallet approval gate</td>
+                <td class="ref">03-eligibility IV.c</td>
+                <td>WalletApproval.active == True required at mint and transfer</td>
+                <td class="code-ref">Minting.daml:49</td>
+                <td><span class="status-pill implemented">Implemented</span></td>
+              </tr>
+              <tr>
+                <td>Permissioned transfers (both parties)</td>
+                <td class="ref">06-transferability II.a</td>
+                <td>Sender + receiver eligibility and wallet checks</td>
+                <td class="code-ref">Transfers.daml:52-55</td>
+                <td><span class="status-pill implemented">Implemented</span></td>
+              </tr>
+              <tr>
+                <td>Splice HoldingV1 interface</td>
+                <td class="ref">Splice Token Standard</td>
+                <td>HectXHolding implements Holding with view, metadata</td>
+                <td class="code-ref">Holding.daml:25-36</td>
+                <td><span class="status-pill implemented">Implemented</span></td>
+              </tr>
+              <tr>
+                <td>Splice TransferFactory interface</td>
+                <td class="ref">Splice Token Standard</td>
+                <td>HectXTransferFactory with compliance-gated transfer</td>
+                <td class="code-ref">Transfers.daml:108-117</td>
+                <td><span class="status-pill implemented">Implemented</span></td>
+              </tr>
+              <tr>
+                <td>Configurable fee policies</td>
+                <td class="ref">08-fees II.a</td>
+                <td>FeeSchedule template with basis-point fields</td>
+                <td class="code-ref">Policy.daml:24-30</td>
+                <td><span class="status-pill implemented">Implemented</span></td>
+              </tr>
+              <tr>
+                <td>Mint rejection with reason codes</td>
+                <td class="ref">04-minting-flow IV.c</td>
+                <td>RejectMint choice + ReasonCode enum (5 codes)</td>
+                <td class="code-ref">Types.daml:9-14</td>
+                <td><span class="status-pill implemented">Implemented</span></td>
+              </tr>
+              <tr>
+                <td>Prohibited jurisdictions list</td>
+                <td class="ref">03-eligibility II.a-v</td>
+                <td>EligibilityPolicy stores list; enforcement at mint/transfer planned</td>
+                <td class="code-ref">Policy.daml:18</td>
+                <td><span class="status-pill partial">Partial</span></td>
+              </tr>
+              <tr>
+                <td>Restricted jurisdiction thresholds</td>
+                <td class="ref">03-eligibility III.a-g</td>
+                <td>RestrictedRule data type with threshold fields; enforcement planned</td>
+                <td class="code-ref">Policy.daml:7-12</td>
+                <td><span class="status-pill partial">Partial</span></td>
+              </tr>
+              <tr>
+                <td>NAV composition (GAV, reserves, fees)</td>
+                <td class="ref">05-pricing I.c-d</td>
+                <td>NAVSnapshot stores all fields; computation off-ledger</td>
+                <td class="code-ref">NAV.daml:9-14</td>
+                <td><span class="status-pill partial">Partial</span></td>
+              </tr>
+              <tr>
+                <td>Corporate action handling</td>
+                <td class="ref">07-corporate-actions I-IV</td>
+                <td>Planned for future phase</td>
+                <td class="code-ref">—</td>
+                <td><span class="status-pill not-impl">Planned</span></td>
+              </tr>
+              <tr>
+                <td>Portfolio tracking on-ledger</td>
+                <td class="ref">02-universe IV.a-c</td>
+                <td>Managed off-ledger; reserve sleeve in NAVSnapshot</td>
+                <td class="code-ref">—</td>
+                <td><span class="status-pill not-impl">Off-Ledger</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
 
+    <!-- ─── Footer ─── -->
     <footer class="footer">
-      Demo is derived from <code>HectX.Tests</code> and the Token Standard transfer flow.
+      <div class="footer-left">
+        <span class="brand-mark brand-mark-sm">HX</span>
+        <span>HECTX Demo &mdash; Canton Network / Splice Token Standard</span>
+      </div>
+      <div class="footer-right">
+        Daml smart contracts &bull; Compliance-gated lifecycle &bull; NAV-based pricing
+      </div>
     </footer>
 
     <script src="./app.js"></script>
