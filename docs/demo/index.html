@@ -31,20 +31,20 @@
       </div>
       <div class="hero-kpis">
         <div class="kpi">
-          <div class="kpi-value" id="kpi-nav">$1,000.00</div>
-          <div class="kpi-label">Net Asset Value</div>
-        </div>
-        <div class="kpi">
           <div class="kpi-value" id="kpi-supply">0</div>
-          <div class="kpi-label">Circulating Supply</div>
+          <div class="kpi-label">Total Supply</div>
         </div>
         <div class="kpi">
           <div class="kpi-value" id="kpi-price">$1.00</div>
-          <div class="kpi-label">NAV per Token</div>
+          <div class="kpi-label">NAV / Token</div>
         </div>
         <div class="kpi">
           <div class="kpi-value" id="kpi-holders">0</div>
-          <div class="kpi-label">Holdings Count</div>
+          <div class="kpi-label">Holdings</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-value" id="kpi-investors">0</div>
+          <div class="kpi-label">Investors</div>
         </div>
       </div>
     </section>
@@ -69,7 +69,7 @@
               <div class="step-number">1</div>
               <div class="step-info">
                 <div class="step-title">Initialize Ledger</div>
-                <div class="step-desc">Create policies, compliance records, NAV snapshot, and transfer factory</div>
+                <div class="step-desc">Allocate 20 parties across 10 jurisdictions, create policy and compliance contracts on the Canton ledger</div>
               </div>
               <button class="btn btn-sm" data-action="setup">Run</button>
             </div>
@@ -93,7 +93,7 @@
               <div class="step-number">2</div>
               <div class="step-info">
                 <div class="step-title">Mint HECTX Tokens</div>
-                <div class="step-desc">Alice subscribes 1,000 units — KYC verified, wallet approved, jurisdiction cleared, NAV-priced</div>
+                <div class="step-desc">16 eligible investors mint HECTX tokens with 7 compliance checks each. Prohibited jurisdictions: United States, North Korea</div>
               </div>
               <button class="btn btn-sm" data-action="mint">Run</button>
             </div>
@@ -117,14 +117,14 @@
               <div class="step-number">3</div>
               <div class="step-info">
                 <div class="step-title">Transfer via Splice Standard</div>
-                <div class="step-desc">Alice sends 100 HECTX to Bob — jurisdiction + eligibility + wallet gated</div>
+                <div class="step-desc">8 cross-party transfers via Splice Token Standard TransferFactory interface</div>
               </div>
               <button class="btn btn-sm" data-action="transfer">Run</button>
             </div>
             <div class="step-detail" id="detail-transfer">
               <div class="step-contracts">
-                <span class="contract-tag">Participant (Bob)</span>
-                <span class="contract-tag">WalletApproval (Bob)</span>
+                <span class="contract-tag">Participant</span>
+                <span class="contract-tag">WalletApproval</span>
                 <span class="contract-tag">EligibilityPolicy</span>
                 <span class="contract-tag">TransferFactory_Transfer</span>
                 <span class="contract-tag">HectXHolding (receiver)</span>
@@ -140,7 +140,7 @@
               <div class="step-number">4</div>
               <div class="step-info">
                 <div class="step-title">Verify Final State</div>
-                <div class="step-desc">Query ledger — confirm Alice: 900, Bob: 100, supply updated</div>
+                <div class="step-desc">Query ledger for all 20 investor balances and verify supply invariant</div>
               </div>
               <button class="btn btn-sm" data-action="verify">Run</button>
             </div>
@@ -155,14 +155,14 @@
               <div class="step-number">5</div>
               <div class="step-info">
                 <div class="step-title">Compliance Rejection Demo</div>
-                <div class="step-desc">Charlie (US investor) attempts to mint — blocked by jurisdiction enforcement</div>
+                <div class="step-desc">4 investors from prohibited jurisdictions (US, North Korea) attempt to mint — all blocked by EligibilityPolicy</div>
               </div>
               <button class="btn btn-sm btn-danger" data-action="rejection">Run</button>
             </div>
             <div class="step-detail" id="detail-rejection">
               <div class="step-contracts">
-                <span class="contract-tag">Participant (Charlie)</span>
-                <span class="contract-tag">WalletApproval (Charlie)</span>
+                <span class="contract-tag">Participant</span>
+                <span class="contract-tag">WalletApproval</span>
                 <span class="contract-tag">MintRequest</span>
                 <span class="contract-tag">ApproveMint</span>
                 <span class="contract-tag">EligibilityPolicy</span>
@@ -185,58 +185,36 @@
       <!-- Right: Status Panels -->
       <section class="status-panels">
 
+        <!-- Infrastructure Panel -->
+        <div class="panel" id="panel-infra">
+          <h3>Infrastructure</h3>
+          <div id="infra-status">Loading...</div>
+        </div>
+
+        <!-- Charts Panel -->
+        <div class="panel" id="panel-charts">
+          <h3>Real-Time Analytics</h3>
+          <div class="charts-grid">
+            <div class="chart-container">
+              <canvas id="chart-supply"></canvas>
+            </div>
+            <div class="chart-container">
+              <canvas id="chart-holdings"></canvas>
+            </div>
+            <div class="chart-container">
+              <canvas id="chart-jurisdictions"></canvas>
+            </div>
+            <div class="chart-container">
+              <canvas id="chart-compliance"></canvas>
+            </div>
+          </div>
+        </div>
+
         <!-- Compliance Panel -->
         <div class="panel" id="panel-compliance">
           <h3>Compliance Status</h3>
-          <div class="compliance-grid" id="compliance-grid">
-            <div class="compliance-card">
-              <div class="cc-header">
-                <span class="cc-icon">&#9632;</span>
-                <span class="cc-title">Eligibility Policy</span>
-                <span class="status-dot pending" id="dot-policy"></span>
-              </div>
-              <div class="cc-body">
-                <div class="cc-row"><span class="cc-label">Prohibited</span><span class="cc-val" id="val-prohibited">—</span></div>
-                <div class="cc-row"><span class="cc-label">Restricted</span><span class="cc-val" id="val-restricted">—</span></div>
-              </div>
-            </div>
-            <div class="compliance-card">
-              <div class="cc-header">
-                <span class="cc-icon">&#9632;</span>
-                <span class="cc-title">Alice</span>
-                <span class="status-dot pending" id="dot-alice"></span>
-              </div>
-              <div class="cc-body">
-                <div class="cc-row"><span class="cc-label">Jurisdiction</span><span class="cc-val" id="val-alice-jurisdiction">—</span></div>
-                <div class="cc-row"><span class="cc-label">Eligibility</span><span class="cc-val" id="val-alice-status">—</span></div>
-                <div class="cc-row"><span class="cc-label">Wallet</span><span class="cc-val" id="val-alice-wallet">—</span></div>
-              </div>
-            </div>
-            <div class="compliance-card">
-              <div class="cc-header">
-                <span class="cc-icon">&#9632;</span>
-                <span class="cc-title">Bob</span>
-                <span class="status-dot pending" id="dot-bob"></span>
-              </div>
-              <div class="cc-body">
-                <div class="cc-row"><span class="cc-label">Jurisdiction</span><span class="cc-val" id="val-bob-jurisdiction">—</span></div>
-                <div class="cc-row"><span class="cc-label">Eligibility</span><span class="cc-val" id="val-bob-status">—</span></div>
-                <div class="cc-row"><span class="cc-label">Wallet</span><span class="cc-val" id="val-bob-wallet">—</span></div>
-              </div>
-            </div>
-            <div class="compliance-card dimmed" id="card-charlie">
-              <div class="cc-header">
-                <span class="cc-icon">&#9632;</span>
-                <span class="cc-title">Charlie</span>
-                <span class="status-dot pending" id="dot-charlie"></span>
-              </div>
-              <div class="cc-body">
-                <div class="cc-row"><span class="cc-label">Jurisdiction</span><span class="cc-val" id="val-charlie-jurisdiction">—</span></div>
-                <div class="cc-row"><span class="cc-label">Eligibility</span><span class="cc-val" id="val-charlie-status">—</span></div>
-                <div class="cc-row"><span class="cc-label">Wallet</span><span class="cc-val" id="val-charlie-wallet">—</span></div>
-                <div class="cc-row"><span class="cc-label">Mint</span><span class="cc-val" id="val-charlie-mint">—</span></div>
-              </div>
-            </div>
+          <div class="compliance-grid" id="compliance-cards">
+            <!-- Dynamically populated -->
           </div>
         </div>
 
@@ -248,12 +226,10 @@
               <tr>
                 <th>Owner</th>
                 <th>Amount</th>
-                <th>Instrument</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody id="holdings-body">
-              <tr class="empty-row"><td colspan="4">No holdings — run the workflow to mint tokens</td></tr>
+              <!-- Dynamically populated -->
             </tbody>
           </table>
         </div>
@@ -382,14 +358,14 @@
                 <td>Corporate action handling</td>
                 <td class="ref">07-corporate-actions I-IV</td>
                 <td>Planned for future phase</td>
-                <td class="code-ref">—</td>
+                <td class="code-ref">&mdash;</td>
                 <td><span class="status-pill not-impl">Planned</span></td>
               </tr>
               <tr>
                 <td>Portfolio tracking on-ledger</td>
                 <td class="ref">02-universe IV.a-c</td>
                 <td>Managed off-ledger; reserve sleeve in NAVSnapshot</td>
-                <td class="code-ref">—</td>
+                <td class="code-ref">&mdash;</td>
                 <td><span class="status-pill not-impl">Off-Ledger</span></td>
               </tr>
             </tbody>
@@ -409,6 +385,7 @@
       </div>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

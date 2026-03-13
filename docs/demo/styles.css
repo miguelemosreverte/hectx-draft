@@ -21,6 +21,9 @@
   --accent-hover: #2563eb;
   --accent-glow: rgba(59, 130, 246, 0.15);
 
+  --green: #22c55e;
+  --red: #ef4444;
+
   --success: #22c55e;
   --success-bg: rgba(34, 197, 94, 0.1);
   --success-border: rgba(34, 197, 94, 0.25);
@@ -525,20 +528,160 @@ body {
   margin-bottom: 1rem;
 }
 
-/* ─── Compliance Cards ─── */
+/* ─── Infrastructure Panel ─── */
+#infra-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.infra-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.8rem;
+}
+
+.infra-item a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.infra-item a:hover {
+  text-decoration: underline;
+}
+
+.infra-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 0.5rem;
+}
+
+.infra-dot.up { background: var(--green); }
+.infra-dot.down { background: var(--red); }
+
+.infra-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.infra-login {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+}
+
+.infra-login strong {
+  color: var(--accent);
+}
+
+.infra-login.infra-open {
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 30%, transparent);
+}
+
+/* ─── Charts ─── */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.chart-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  height: 220px;
+  position: relative;
+}
+
+.chart-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ─── Compliance Cards (20 investors) ─── */
 .compliance-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.5rem;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .compliance-card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
-  padding: 0.75rem;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  transition: opacity 0.4s ease, border-color 0.3s ease;
 }
 
+.compliance-card .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+  margin-right: 0.35rem;
+  background: var(--text-muted);
+}
+
+.compliance-card .card-name {
+  font-weight: 600;
+  font-size: 0.78rem;
+  margin-bottom: 0.15rem;
+}
+
+.compliance-card .card-jurisdiction {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}
+
+/* Compliance card states */
+.compliance-card.dimmed {
+  opacity: 0.3;
+}
+
+.compliance-card.dimmed .status-dot {
+  background: var(--text-muted) !important;
+  box-shadow: none !important;
+}
+
+.compliance-card.approved {
+  border-color: var(--success-border);
+}
+
+.compliance-card.approved .status-dot {
+  background: var(--success);
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+}
+
+.compliance-card.rejected {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.compliance-card.rejected .status-dot {
+  background: var(--error);
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
+}
+
+/* ─── Legacy compliance support ─── */
 .cc-header {
   display: flex;
   align-items: center;
@@ -611,6 +754,12 @@ body {
   padding: 0.55rem 0.75rem;
   font-size: 0.8rem;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.holdings-table td.number {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
 }
 
 .holdings-table .amount-cell {
@@ -742,17 +891,6 @@ body {
   contain: layout style;
 }
 
-/* Charlie card: always in DOM, dimmed until revealed */
-.compliance-card.dimmed {
-  opacity: 0.3;
-  transition: opacity 0.4s ease;
-}
-
-.compliance-card.dimmed .status-dot {
-  background: var(--text-muted) !important;
-  box-shadow: none !important;
-}
-
 /* ─── Responsive ─── */
 @media (max-width: 1100px) {
   .main {
@@ -770,6 +908,10 @@ body {
   }
 
   .compliance-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  .charts-grid {
     grid-template-columns: 1fr;
   }
 

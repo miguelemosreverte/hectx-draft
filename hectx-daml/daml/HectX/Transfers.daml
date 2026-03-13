@@ -134,7 +134,7 @@ template HectXTransferFactory
 
       transferFactory_transferImpl _ arg = runTransfer admin factoryInstrumentId eligibilityPolicyCid knownParticipants knownWallets arg
 
-    choice ExecuteTransfer : TransferInstructionResult
+    nonconsuming choice ExecuteTransfer : TransferInstructionResult
       with
         expectedAdmin : Party
         transfer : Transfer

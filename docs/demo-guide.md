@@ -1,8 +1,8 @@
-# HECTX Demo Presentation Guide
+# HECTX Demo Guide
 
-**Version:** 1.0
+**Version:** 2.0
 **Last Updated:** 2026-03-13
-**Audience:** Client-facing demo for investors and partners
+**Audience:** Developers running the demo, and presenters doing client-facing walkthroughs
 
 ---
 
@@ -10,58 +10,197 @@
 
 | Requirement | Version | Notes |
 |-------------|---------|-------|
-| Node.js | 18+ | For static demo server and Playwright |
-| Playwright | 1.58+ | `npm install` in project root installs it |
-| Daml SDK | 3.4.11 | Only needed if running live ledger tests |
-| Java (OpenJDK) | 21 | Only needed for Daml Script execution |
+| Docker | 24+ | Runs the Splice localnet (Canton + Postgres + validator UIs) |
+| Node.js | 18+ | Demo server and Playwright |
+| Hurl | 6+ | E2E test runner (`brew install hurl`) |
+| Daml SDK | 3.4.11 | Only needed to rebuild Daml contracts |
+| Java (OpenJDK) | 21 | Only needed for `daml script` execution |
+
+> **macOS with Colima:** If you use Colima instead of Docker Desktop, the scripts auto-detect `~/.colima/docker.sock` via `scripts/docker-env.sh`.
+
+---
 
 ## Quick Start
 
-### Running the Demo
-
-The demo runs against a real Daml ledger on the Canton Network via the Splice localnet (Docker). The TypeScript backend talks to the JSON API to create and exercise actual Daml contracts.
+### 1. Start the Canton localnet
 
 ```bash
-# Start the Splice localnet + demo server
+./scripts/localnet-up.sh
+```
+
+This runs `docker compose up` with the Splice 0.5.14 localnet — Canton participant (JSON API on port **2975**), Postgres, SV node, validator, and web UIs. Wait until all containers report healthy:
+
+```bash
+docker ps --format "table {{.Names}}\t{{.Status}}"
+```
+
+You should see `canton`, `splice`, `postgres`, and several `*-web-ui` containers all showing `healthy`.
+
+### 2. Build and start the demo server
+
+```bash
+cd hectx-services
+npm install
+npm run build
+node dist/demo-server.js
+```
+
+The demo server starts on **http://localhost:5177**. It serves the UI at `/` and exposes the API endpoints that talk to the real Canton ledger.
+
+### 3. Open the demo
+
+Open **http://localhost:5177** in a browser. Click **"Run All Steps"** or run each step individually.
+
+### One-liner (localnet + demo server)
+
+```bash
 ./scripts/demo-run.sh
 ```
 
-This brings up the Canton network in Docker, builds the TypeScript service layer, and starts the demo server on `http://localhost:5177`.
+This does steps 1-2 in sequence: brings up the localnet, installs dependencies, builds, and starts the demo server.
 
-Each API call (`/api/setup`, `/api/mint`, `/api/transfer`, `/api/rejection`) creates real contracts on the ledger, exercises real Daml choices, and enforces the actual smart contract compliance logic.
-
-### Running the E2E Test
+### Stopping
 
 ```bash
-# Runs the full demo lifecycle against the real ledger and validates with Hurl
+# Stop the localnet (removes containers and volumes)
+./scripts/localnet-down.sh
+```
+
+---
+
+## API Endpoints
+
+The demo server exposes these endpoints, each executing real Daml contract operations:
+
+| Endpoint | Method | What it does |
+|----------|--------|-------------|
+| `/api/status` | GET | Returns current ledger state: parties, balances, supply, holdings count |
+| `/api/setup` | POST | Allocates parties, grants CanActAs rights, creates 7 contracts (EligibilityPolicy, FeeSchedule, MintPolicy, Registry, Supply, NAVSnapshot, TransferFactory) |
+| `/api/mint` | POST | Alice mints 1,000 HECTX — runs 7 compliance checks, creates MintRequest + ApproveMint |
+| `/api/transfer` | POST | Alice transfers 100 HECTX to Bob via Splice TransferFactory interface |
+| `/api/rejection` | POST | Charlie (US jurisdiction) attempts to mint — blocked by EligibilityPolicy |
+| `/api/reset` | POST | Clears server state and generates new session suffix for party isolation |
+
+### Session isolation
+
+Each `/api/reset` generates a random 4-character suffix appended to party names (e.g., `Alice_x7k2`). This ensures repeated runs don't collide with stale contracts from previous sessions on the same ledger.
+
+---
+
+## Running E2E Tests
+
+### Full pipeline (localnet + server + tests + teardown)
+
+```bash
 ./scripts/demo-e2e.sh
 ```
 
-Or, if the demo server is already running:
+### Against a running server
 
 ```bash
 cd hectx-services
 hurl --test --variable base_url=http://localhost:5177 tests/demo.hurl
 ```
 
-### Taking Screenshots
+The Hurl test runs all 5 steps (20 investors, 16 mints, 8 transfers, 4 rejections), verifies balances and supply invariant, resets, and verifies the reset. Expect ~60s and 8 HTTP requests.
 
-```bash
-# Captures 8 high-DPI screenshots to sessions/screenshots/
-node scripts/screenshot-static.mjs
+### Expected timing breakdown
+
+All time is spent waiting for Canton to commit transactions — this is the real ledger, not a mock.
+
+| Step | Endpoint | Time | What's happening |
+|------|----------|------|-----------------|
+| 1. Setup | `POST /api/setup` | ~8s | 20 party allocations + 20 actAs grants + 7 contract creates |
+| 2. Mint | `POST /api/mint` | ~20s | 16 participant + wallet records, 16 sequential mints (Supply is singleton) |
+| 3. Transfer | `POST /api/transfer` | ~18s | 16 RegisterParty calls + 8 transfers with ACS queries |
+| 4. Verify | `GET /api/status` | <1s | Queries ACS for all balances |
+| 5. Rejection | `POST /api/rejection` | ~12s | 4 prohibited investors: allocate, compliance, attempt mint (aborts) |
+| 6-8 | Verify + Reset + Verify | <1s | Status checks and state clear |
+| **Total** | | **~60s** | |
+
+Setup parallelizes party allocations in batches of 10. Mints must be sequential because each `ApproveMint` updates the singleton Supply contract. Each Canton transaction commit takes ~400ms.
+
+---
+
+## Autoplay Mode (for GIF/video recording)
+
+The UI supports query parameters for automated recording with Playwright or Selenium:
+
+```
+http://localhost:5177/?autoplay&delay=800
 ```
 
-### Running Daml Tests (Verification)
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `autoplay` | _(flag)_ | Automatically resets and runs all 5 steps on page load |
+| `delay` | `800` | Milliseconds between steps |
+
+### Detecting completion programmatically
+
+The `<body>` element has a `data-demo-phase` attribute that reflects the current state:
+
+| Value | Meaning |
+|-------|---------|
+| `idle` | Page loaded, waiting for user action |
+| `running` | Steps are executing |
+| `done` | All steps completed successfully |
+| `error` | A step failed |
+
+Example Playwright snippet:
+
+```javascript
+await page.goto("http://localhost:5177/?autoplay&delay=600");
+await page.waitForAttribute("body", "data-demo-phase", "done", { timeout: 60000 });
+```
+
+---
+
+## Running Daml Tests (standalone verification)
+
+These run the contract logic in the Daml IDE ledger without needing Docker:
 
 ```bash
 cd hectx-daml
 export PATH="$HOME/.daml/bin:$PATH"
 daml build
-daml script --dar .daml/dist/hectx-0.1.0.dar \
+daml script --dar .daml/dist/hectx-0.2.0.dar \
   --script-name HectX.Tests:main --ide-ledger
 ```
 
-Expected output: clean exit with no errors (7 tests pass silently).
+Expected: clean exit with no errors (7 tests pass silently).
+
+---
+
+## Web UIs and Login Credentials
+
+The Splice localnet runs in **unsafe auth mode** — no passwords, no OAuth. Each web UI shows a simple text field asking for a username. Type the username listed below and click "Log In".
+
+| URL | UI | Login Username |
+|-----|-----|---------------|
+| `http://localhost:5177` | **HECTX Demo** | No login required |
+| `http://wallet.localhost:2000` | Wallet (App User) | `app-user` |
+| `http://ans.localhost:2000` | ANS (App User) | `app-user` |
+| `http://wallet.localhost:3000` | Wallet (App Provider) | `app-provider` |
+| `http://ans.localhost:3000` | ANS (App Provider) | `app-provider` |
+| `http://wallet.localhost:4000` | Wallet (Super Validator) | `sv` |
+| `http://sv.localhost:4000` | SV Dashboard | `sv` |
+| `http://scan.localhost:4000` | Scan (Ledger Explorer) | No login required |
+
+> **Note:** These are real Splice Network UIs running from the Canton localnet Docker containers. The Scan UI is particularly useful during the demo — it shows transactions landing on the ledger in real-time, proving this is not a mock.
+
+---
+
+## Port Reference
+
+| Port | Service |
+|------|---------|
+| 2975 | Canton HTTP JSON Ledger API v2 (participant) |
+| 5177 | HECTX demo server |
+| 5432 | Postgres |
+| 2000 | App User web UIs (wallet, ANS — via nginx) |
+| 3000 | App Provider web UIs (wallet, ANS — via nginx) |
+| 4000 | Super Validator web UIs (wallet, SV dashboard, scan — via nginx) |
+| 2901-2902 | Canton admin/ledger API |
 
 ---
 
@@ -108,8 +247,6 @@ Expected output: clean exit with no errors (7 tests pass silently).
 6. Fees computed — "Subscription and conversion fees are deducted before token calculation."
 7. `netAmount > 0` — "After fees, the investment amount is positive."
 
-**Architecture point:** "The NAV per token formula is `NAV / circulating supply`. For the first mint, supply is zero, so we use a fallback of 1.0. This is implemented at `Minting.daml:54`."
-
 **KPI cards:** Point to Supply updating to 1,000 and NAV/Token showing $1.0000.
 
 ---
@@ -154,18 +291,7 @@ Expected output: clean exit with no errors (7 tests pass silently).
 
 ---
 
-### Architecture Table (2 minutes)
-
-**Scroll down** to the Architecture Decisions table.
-
-**What to highlight:**
-- "Each row maps a product requirement — with its document reference — to the exact Daml source code that implements it."
-- Point to the Status column: "Green means fully implemented and tested. Amber means the data structure exists but enforcement is partial. Gray means planned for a future phase."
-- "Prohibited jurisdictions enforcement — this was the highest-priority compliance item. It's now fully implemented at both mint and transfer enforcement points, with references to `Minting.daml:51` and `Transfers.daml:60-61`."
-
----
-
-## Key Architecture Decisions to Highlight
+## Key Architecture Decisions
 
 | Decision | Why It Matters |
 |----------|---------------|
@@ -211,14 +337,19 @@ A: Yes. `EligibilityPolicy.prohibitedJurisdictions` is a `[Text]` — an arbitra
 
 ---
 
-## Demo Files Reference
+## Files Reference
 
 | File | Purpose |
 |------|---------|
 | `docs/demo/index.html` | Demo UI — single-page application |
 | `docs/demo/styles.css` | Dark professional theme |
-| `docs/demo/app.js` | Interactive controller with 5-step workflow |
-| `scripts/screenshot-static.mjs` | Playwright screenshot tool (8 captures) |
-| `docs/hectx-compliance/compliance-report.md` | Full compliance assessment |
-| `docs/hectx-compliance/requirements-traceability.md` | 70-requirement traceability matrix |
-| `docs/hectx-compliance/compliance-white-paper.md` | Client-facing compliance architecture |
+| `docs/demo/app.js` | Interactive controller with autoplay support |
+| `hectx-services/src/demo-server.ts` | Backend — talks to Canton v2 JSON API |
+| `hectx-services/src/jsonApi.ts` | Canton v2 HTTP JSON Ledger API client |
+| `hectx-services/tests/demo.hurl` | E2E test (8 requests, all 5 steps + reset) |
+| `scripts/demo-run.sh` | One-liner: localnet + build + server |
+| `scripts/demo-e2e.sh` | One-liner: localnet + build + server + hurl tests + teardown |
+| `scripts/localnet-up.sh` | Start Canton/Splice Docker containers |
+| `scripts/localnet-down.sh` | Stop and remove containers + volumes |
+| `scripts/docker-env.sh` | Sets `DOCKER_HOST` for Colima compatibility |
+| `hectx-daml/daml/HectX/*.daml` | Daml smart contract source |
