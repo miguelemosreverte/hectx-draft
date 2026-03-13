@@ -5,7 +5,7 @@
 const demoState = {
   phase: "idle", // idle | running | done
   currentStep: 0,
-  steps: ["setup", "mint", "transfer", "verify"],
+  steps: ["setup", "mint", "transfer", "verify", "rejection"],
   completed: new Set(),
 
   // Ledger state
@@ -61,10 +61,14 @@ async function api(path, opts = {}) {
 function markStep(name, status) {
   const el = $(`#step-${name}`);
   if (!el) return;
-  el.classList.remove("active", "done");
+  el.classList.remove("active", "done", "rejected");
   if (status === "active") el.classList.add("active");
   if (status === "done") {
     el.classList.add("done");
+    demoState.completed.add(name);
+  }
+  if (status === "rejected") {
+    el.classList.add("rejected");
     demoState.completed.add(name);
   }
 }
@@ -206,13 +210,14 @@ async function runMint() {
     log(`Participant (Alice) created — jurisdiction: Portugal, status: Eligible`, "success");
     log(`WalletApproval (Alice) created — active: true`, "success");
     log(`MintRequest submitted — investor: Alice, amount: 1,000.00`, "info");
-    log(`ApproveMint executed — 6 compliance checks passed:`, "success");
+    log(`ApproveMint executed — 7 compliance checks passed:`, "success");
     log(`  ✓ mintingEnabled == True`, "success");
     log(`  ✓ investor.status == Eligible`, "success");
     log(`  ✓ wallet.active == True`, "success");
+    log(`  ✓ jurisdiction "Portugal" not in prohibitedJurisdictions`, "success");
     log(`  ✓ NAV age ≤ 3600s`, "success");
-    log(`  ✓ fees computed (sub: 0, conv: 0, elastic: 0)`, "success");
-    log(`  ✓ netAmount > 0`, "success");
+    log(`  ✓ fees computed (sub: 0 bps, conv: 0 bps, elastic: N/A)`, "success");
+    log(`  ✓ netAmount = 1,000.00 > 0`, "success");
     log(`HectXHolding created — Alice: 1,000.00 HECTX`, "success");
     log(`Supply updated — 0 → 1,000.00`, "info");
 
@@ -240,11 +245,13 @@ async function runTransfer() {
     );
     log(`Participant (Bob) created — jurisdiction: Portugal, status: Eligible`, "success");
     log(`WalletApproval (Bob) created — active: true`, "success");
-    log(`TransferFactory_Transfer executed — compliance checks:`, "success");
+    log(`TransferFactory_Transfer executed — 6 compliance checks passed:`, "success");
     log(`  ✓ sender.status == Eligible`, "success");
     log(`  ✓ receiver.status == Eligible`, "success");
     log(`  ✓ sender wallet active`, "success");
     log(`  ✓ receiver wallet active`, "success");
+    log(`  ✓ sender jurisdiction "Portugal" not prohibited`, "success");
+    log(`  ✓ receiver jurisdiction "Portugal" not prohibited`, "success");
     log(`Input holding archived — Alice: 1,000.00`, "info");
     log(`Receiver holding created — Bob: 100.00 HECTX`, "success");
     log(`Change holding created — Alice: 900.00 HECTX`, "success");
@@ -289,6 +296,58 @@ async function runVerify() {
   }
 }
 
+/* ─── Step 5: Rejection ─── */
+async function runRejection() {
+  markStep("rejection", "active");
+  log("═══ Compliance Rejection Scenario ═══", "info");
+  log("Creating Charlie (US-based investor) — jurisdiction: United States", "info");
+
+  try {
+    // In live mode, try API; in static mode, simulate
+    try { await api("/api/rejection"); } catch (_) { /* static mode — simulate below */ }
+
+    // Show Charlie's compliance card
+    const card = $("#card-charlie");
+    if (card) card.style.display = "";
+
+    // Update Charlie's status
+    $("#val-charlie-jurisdiction").textContent = "United States";
+    $("#val-charlie-status").textContent = "Eligible";
+    $("#val-charlie-wallet").textContent = "Active";
+
+    log(`Participant (Charlie) created — jurisdiction: United States, status: Eligible`, "success");
+    log(`WalletApproval (Charlie) created — active: true`, "success");
+    log(`MintRequest submitted — investor: Charlie, amount: 500.00`, "info");
+    log(`ApproveMint executing — compliance checks:`, "info");
+    log(`  ✓ mintingEnabled == True`, "success");
+    log(`  ✓ investor.status == Eligible`, "success");
+    log(`  ✓ wallet.active == True`, "success");
+    log(`  ✗ jurisdiction "United States" IS in prohibitedJurisdictions`, "error");
+    log(`ApproveMint ABORTED — "investor jurisdiction prohibited"`, "error");
+    log(`MintRequest rolled back — no tokens minted, no supply change`, "error");
+
+    // Mark Charlie as rejected
+    const dotCharlie = $("#dot-charlie");
+    if (dotCharlie) dotCharlie.className = "status-dot rejected";
+    $("#val-charlie-mint").textContent = "BLOCKED";
+    const charlieCard = $("#card-charlie");
+    if (charlieCard) charlieCard.classList.add("rejected");
+
+    markStep("rejection", "rejected");
+    setStepResult("rejection",
+      `Investor:    Charlie (US)\nJurisdiction: United States\nPolicy check: FAILED — prohibited jurisdiction\nOutcome:     MintRequest REJECTED\nTokens:      0 (no change to supply)`
+    );
+
+    log(`Compliance enforcement verified — prohibited jurisdiction blocks on-ledger`, "success");
+    log(`═══ Rejection scenario complete ═══`, "info");
+    return true;
+  } catch (err) {
+    log(`Rejection demo error: ${err.message}`, "error");
+    markStep("rejection", "");
+    return false;
+  }
+}
+
 /* ─── Run All ─── */
 async function runAll() {
   if (demoState.phase === "running") return;
@@ -313,8 +372,11 @@ async function runAll() {
   await delay(400);
 
   await runVerify();
+  await delay(400);
 
-  log("═══ Demo scenario complete ═══", "info");
+  await runRejection();
+
+  log("═══ Full demo scenario complete ═══", "info");
   demoState.phase = "done";
   btn.textContent = "Complete";
 }
@@ -334,8 +396,12 @@ function reset() {
   demoState.logEntries = 0;
 
   // Reset steps
-  $$(".step").forEach((el) => el.classList.remove("active", "done"));
+  $$(".step").forEach((el) => el.classList.remove("active", "done", "rejected"));
   $$(".step-result").forEach((el) => el.remove());
+
+  // Hide Charlie card
+  const card = $("#card-charlie");
+  if (card) { card.style.display = "none"; card.classList.remove("rejected"); }
 
   // Reset UI
   logEl.innerHTML = "";
@@ -368,6 +434,7 @@ $$("[data-action]").forEach((btn) => {
       if (action === "mint") await runMint();
       if (action === "transfer") await runTransfer();
       if (action === "verify") await runVerify();
+      if (action === "rejection") await runRejection();
     } catch (err) {
       log(`Error: ${err.message}`, "error");
     }

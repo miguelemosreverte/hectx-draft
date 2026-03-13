@@ -266,9 +266,55 @@ body {
   font-size: 0.72rem;
 }
 
+.btn-danger {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: var(--error);
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: var(--error);
+}
+
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* Rejection step state */
+.step.rejected {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.step.rejected .step-number {
+  background: var(--error);
+  border-color: var(--error);
+  color: #fff;
+  font-size: 0;
+}
+
+.step.rejected .step-number::after {
+  content: "\2717";
+  font-size: 0.75rem;
+}
+
+.step.rejected .contract-tag {
+  border-color: rgba(239, 68, 68, 0.25);
+  color: var(--error);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* Status pill for rejected */
+.status-pill.rejected {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+/* Compliance card rejected outline */
+.compliance-card.rejected {
+  border-color: rgba(239, 68, 68, 0.35);
 }
 
 /* ─── Steps ─── */
@@ -471,7 +517,7 @@ body {
 /* ─── Compliance Cards ─── */
 .compliance-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 0.75rem;
 }
 
@@ -510,6 +556,7 @@ body {
 .status-dot.pending { background: var(--text-muted); }
 .status-dot.active { background: var(--success); box-shadow: 0 0 6px rgba(34, 197, 94, 0.4); }
 .status-dot.warning { background: var(--warning); }
+.status-dot.rejected { background: var(--error); box-shadow: 0 0 6px rgba(239, 68, 68, 0.4); }
 
 .cc-body {
   display: flex;

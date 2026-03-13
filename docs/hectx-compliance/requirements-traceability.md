@@ -140,14 +140,14 @@
 |------|-------|-------------|---------|------------|-----------------|
 | Product Definition | 4 | 3 | 1 | 0 | 0 |
 | Universe & Portfolio | 4 | 0 | 1 | 0 | 3 |
-| Eligibility & Onboarding | 9 | 2 | 3 | 1 | 3 |
+| Eligibility & Onboarding | 9 | 4 | 2 | 1 | 2 |
 | Minting Flow | 13 | 9 | 1 | 0 | 3 |
 | Pricing & NAV | 10 | 5 | 2 | 0 | 3 |
 | Transferability | 9 | 7 | 1 | 0 | 1 |
 | Corporate Actions | 6 | 0 | 1 | 0 | 5 |
 | Fees, Taxes & Legal | 11 | 4 | 2 | 0 | 5 |
 | Trust & Transparency | 4 | 0 | 2 | 2 | 0 |
-| **TOTAL** | **70** | **30 (43%)** | **14 (20%)** | **3 (4%)** | **23 (33%)** |
+| **TOTAL** | **70** | **32 (46%)** | **12 (17%)** | **3 (4%)** | **23 (33%)** |
 
 ---
 
@@ -165,7 +165,7 @@
 ## Critical Gaps for Client Demo
 
 ### High Priority (Compliance Risk)
-1. **ELG-01/02**: Jurisdiction enforcement not active at mint/transfer enforcement points
+1. ~~**ELG-01/02**: Jurisdiction enforcement not active at mint/transfer enforcement points~~ → **RESOLVED (Session 3)**
 2. **ELG-03**: Restricted jurisdiction thresholds stored but not validated
 3. **TRF-05**: No global transfer pause mechanism
 

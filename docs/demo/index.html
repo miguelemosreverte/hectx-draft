@@ -92,7 +92,7 @@
               <div class="step-number">2</div>
               <div class="step-info">
                 <div class="step-title">Mint HECTX Tokens</div>
-                <div class="step-desc">Alice subscribes 1,000 units — KYC verified, wallet approved, NAV-priced</div>
+                <div class="step-desc">Alice subscribes 1,000 units — KYC verified, wallet approved, jurisdiction cleared, NAV-priced</div>
               </div>
               <button class="btn btn-sm" data-action="mint">Run</button>
             </div>
@@ -100,6 +100,7 @@
               <div class="step-contracts">
                 <span class="contract-tag">Participant</span>
                 <span class="contract-tag">WalletApproval</span>
+                <span class="contract-tag">EligibilityPolicy</span>
                 <span class="contract-tag">MintRequest</span>
                 <span class="contract-tag">ApproveMint</span>
                 <span class="contract-tag">HectXHolding</span>
@@ -114,7 +115,7 @@
               <div class="step-number">3</div>
               <div class="step-info">
                 <div class="step-title">Transfer via Splice Standard</div>
-                <div class="step-desc">Alice sends 100 HECTX to Bob — compliance-gated, holdings rebalanced</div>
+                <div class="step-desc">Alice sends 100 HECTX to Bob — jurisdiction + eligibility + wallet gated</div>
               </div>
               <button class="btn btn-sm" data-action="transfer">Run</button>
             </div>
@@ -122,6 +123,7 @@
               <div class="step-contracts">
                 <span class="contract-tag">Participant (Bob)</span>
                 <span class="contract-tag">WalletApproval (Bob)</span>
+                <span class="contract-tag">EligibilityPolicy</span>
                 <span class="contract-tag">TransferFactory_Transfer</span>
                 <span class="contract-tag">HectXHolding (receiver)</span>
                 <span class="contract-tag">HectXHolding (change)</span>
@@ -140,6 +142,27 @@
               <button class="btn btn-sm" data-action="verify">Run</button>
             </div>
             <div class="step-detail" id="detail-verify"></div>
+          </div>
+
+          <!-- Step 5: Rejection Scenario -->
+          <div class="step" data-step="rejection" id="step-rejection">
+            <div class="step-header">
+              <div class="step-number">5</div>
+              <div class="step-info">
+                <div class="step-title">Compliance Rejection Demo</div>
+                <div class="step-desc">Charlie (US investor) attempts to mint — blocked by jurisdiction enforcement</div>
+              </div>
+              <button class="btn btn-sm btn-danger" data-action="rejection">Run</button>
+            </div>
+            <div class="step-detail" id="detail-rejection">
+              <div class="step-contracts">
+                <span class="contract-tag">Participant (Charlie)</span>
+                <span class="contract-tag">WalletApproval (Charlie)</span>
+                <span class="contract-tag">MintRequest</span>
+                <span class="contract-tag">ApproveMint</span>
+                <span class="contract-tag">EligibilityPolicy</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -193,6 +216,19 @@
                 <div class="cc-row"><span class="cc-label">Jurisdiction</span><span class="cc-val" id="val-bob-jurisdiction">—</span></div>
                 <div class="cc-row"><span class="cc-label">Eligibility</span><span class="cc-val" id="val-bob-status">—</span></div>
                 <div class="cc-row"><span class="cc-label">Wallet</span><span class="cc-val" id="val-bob-wallet">—</span></div>
+              </div>
+            </div>
+            <div class="compliance-card" id="card-charlie" style="display:none">
+              <div class="cc-header">
+                <span class="cc-icon">&#9632;</span>
+                <span class="cc-title">Charlie</span>
+                <span class="status-dot pending" id="dot-charlie"></span>
+              </div>
+              <div class="cc-body">
+                <div class="cc-row"><span class="cc-label">Jurisdiction</span><span class="cc-val" id="val-charlie-jurisdiction">—</span></div>
+                <div class="cc-row"><span class="cc-label">Eligibility</span><span class="cc-val" id="val-charlie-status">—</span></div>
+                <div class="cc-row"><span class="cc-label">Wallet</span><span class="cc-val" id="val-charlie-wallet">—</span></div>
+                <div class="cc-row"><span class="cc-label">Mint</span><span class="cc-val" id="val-charlie-mint">—</span></div>
               </div>
             </div>
           </div>
@@ -283,8 +319,8 @@
               <tr>
                 <td>Permissioned transfers (both parties)</td>
                 <td class="ref">06-transferability II.a</td>
-                <td>Sender + receiver eligibility and wallet checks</td>
-                <td class="code-ref">Transfers.daml:52-55</td>
+                <td>Sender + receiver: eligibility, wallet, and jurisdiction checks</td>
+                <td class="code-ref">Transfers.daml:36-61</td>
                 <td><span class="status-pill implemented">Implemented</span></td>
               </tr>
               <tr>
@@ -316,11 +352,11 @@
                 <td><span class="status-pill implemented">Implemented</span></td>
               </tr>
               <tr>
-                <td>Prohibited jurisdictions list</td>
-                <td class="ref">03-eligibility II.a-v</td>
-                <td>EligibilityPolicy stores list; enforcement at mint/transfer planned</td>
-                <td class="code-ref">Policy.daml:18</td>
-                <td><span class="status-pill partial">Partial</span></td>
+                <td>Prohibited jurisdictions enforcement</td>
+                <td class="ref">03-eligibility I.a-b, II.a-v</td>
+                <td>EligibilityPolicy.prohibitedJurisdictions enforced at both mint and transfer</td>
+                <td class="code-ref">Minting.daml:51, Transfers.daml:60-61</td>
+                <td><span class="status-pill implemented">Implemented</span></td>
               </tr>
               <tr>
                 <td>Restricted jurisdiction thresholds</td>
