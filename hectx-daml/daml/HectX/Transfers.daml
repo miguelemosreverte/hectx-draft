@@ -10,6 +10,7 @@ import Splice.Api.Token.TransferInstructionV1
 
 import HectX.Holding
 import HectX.Compliance
+import HectX.Policy
 import HectX.Types
 
 emptyMeta : Api.Token.MetadataV1.Metadata
@@ -53,6 +54,11 @@ runTransfer admin factoryInstrumentId arg = do
   require "receiver not eligible" (receiverP.status == Eligible)
   require "sender wallet not active" senderW.active
   require "receiver wallet not active" receiverW.active
+
+  -- Jurisdiction enforcement
+  (_, eligPolicy) <- fetchByKey @EligibilityPolicy admin
+  require "sender jurisdiction prohibited" (not (senderP.jurisdiction `elem` eligPolicy.prohibitedJurisdictions))
+  require "receiver jurisdiction prohibited" (not (receiverP.jurisdiction `elem` eligPolicy.prohibitedJurisdictions))
 
   require "inputHoldingCids required" (not (null transfer.inputHoldingCids))
 

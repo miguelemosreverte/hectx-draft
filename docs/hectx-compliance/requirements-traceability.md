@@ -39,9 +39,9 @@
 
 | ID | Requirement | Source | Implementation | Status | Source Code | Test Evidence |
 |----|-------------|--------|----------------|--------|-------------|---------------|
-| ELG-01 | Non-US investors; US persons prohibited | `03-eligibility.md` I.a-b | EligibilityPolicy stores prohibited list; **not enforced at mint/transfer** | **Partial** | `Policy.daml:18` | `Tests.daml:33` (list created) |
-| ELG-02 | 22 prohibited jurisdictions enumerated | `03-eligibility.md` II.a-v | EligibilityPolicy accepts list; test only includes "United States" | **Partial** | `Policy.daml:18` | `Tests.daml:33` |
-| ELG-03 | 7 restricted jurisdictions with thresholds | `03-eligibility.md` III.a-g | RestrictedRule data type exists with minNetWorth/minAssets/minIncome; **not enforced** | **Partial** | `Policy.daml:7-12` | — |
+| ELG-01 | Non-US investors; US persons prohibited | `03-eligibility.md` I.a-b | EligibilityPolicy.prohibitedJurisdictions enforced at mint (`Minting.daml:51`) and transfer (`Transfers.daml:60-61`) | **Implemented** | `Policy.daml:18`, `Minting.daml:51`, `Transfers.daml:60-61` | `Tests.daml:test_jurisdiction_rejection` |
+| ELG-02 | 22 prohibited jurisdictions enumerated | `03-eligibility.md` II.a-v | EligibilityPolicy accepts arbitrary list; enforcement active. Test covers "United States" | **Implemented** | `Policy.daml:18`, `Minting.daml:51` | `Tests.daml:test_jurisdiction_rejection` |
+| ELG-03 | 7 restricted jurisdictions with thresholds | `03-eligibility.md` III.a-g | RestrictedRule data type exists with minNetWorth/minAssets/minIncome; **threshold enforcement not yet implemented** | **Partial** | `Policy.daml:7-12` | — |
 | ELG-04 | KYC/KYB, sanctions screening | `03-eligibility.md` IV.b | Assumed off-ledger; Participant record created manually by admin | **Off-Ledger** | `Compliance.daml:7-18` | `Tests.daml:74-76` |
 | ELG-05 | Wallet registration and approval | `03-eligibility.md` IV.c | WalletApproval template with active toggle | **Implemented** | `Compliance.daml:29-46` | `Tests.daml:79-81` |
 | ELG-06 | Terms acceptance audit trail | `03-eligibility.md` IV.d | Not implemented | **Not Implemented** | — | — |

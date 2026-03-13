@@ -1,7 +1,6 @@
 module HectX.Tests where
 
 import Daml.Script
-import DA.Assert
 import DA.Time
 import DA.Date
 
@@ -18,6 +17,109 @@ import HectX.Transfers
 import HectX.Types
 import HectX.Holding
 
+
+-- ═══════════════════════════════════════════════════
+-- Helper: set up base ledger state
+-- Each test gets its own parties to avoid key conflicts
+-- ═══════════════════════════════════════════════════
+
+data TestSetup = TestSetup with
+    admin : Party
+    alice : Party
+    bob : Party
+    instrumentId : Api.Token.HoldingV1.InstrumentId
+    registryCid : ContractId HectXRegistry
+    tfCid : ContractId HectXTransferFactory
+  deriving (Eq, Show)
+
+setupLedger : Text -> Decimal -> Decimal -> Decimal -> Bool -> Decimal -> Int
+  -> Script TestSetup
+setupLedger label subFeeBps convFeeBps mgmtFeeBps elasticActive elasticBps maxNavAge = script do
+  admin <- allocateParty (label <> "_Admin")
+  alice <- allocateParty (label <> "_Alice")
+  bob   <- allocateParty (label <> "_Bob")
+  let instrumentId = Api.Token.HoldingV1.InstrumentId with admin; id = "HECTX"
+
+  elig <- submit admin do
+    createCmd EligibilityPolicy with
+      eligibilityAdmin = admin
+      prohibitedJurisdictions = ["United States"]
+      restrictedJurisdictions = mempty
+
+  fees <- submit admin do
+    createCmd FeeSchedule with
+      feeAdmin = admin
+      subscriptionFeeBps = subFeeBps
+      conversionFeeBps = convFeeBps
+      managementFeeBps = mgmtFeeBps
+
+  mintPol <- submit admin do
+    createCmd MintPolicy with
+      mintPolicyAdmin = admin
+      mintingEnabled = True
+      elasticFeeActive = elasticActive
+      elasticFeeBps = elasticBps
+      maxNavAgeSeconds = maxNavAge
+
+  reg <- submit admin do
+    createCmd HectXRegistry with
+      admin; instrumentId
+      eligibilityPolicyCid = elig
+      feeScheduleCid = fees
+      mintPolicyCid = mintPol
+
+  now <- getTime
+  _ <- submit admin do
+    createCmd Supply with supplyAdmin = admin; totalSupply = 0.0
+
+  _ <- submit admin do
+    createCmd NAVSnapshot with
+      navAdmin = admin
+      nav = 1000.0; gav = 1000.0; reserves = 1000.0
+      liabilities = 0.0; accruedFees = 0.0
+      timestamp = now
+
+  tf <- submit admin do
+    createCmd HectXTransferFactory with
+      admin; factoryInstrumentId = instrumentId; observers = [alice, bob]
+
+  pure TestSetup with admin; alice; bob; instrumentId; registryCid = reg; tfCid = tf
+
+
+-- Helper: onboard a participant and wallet
+onboardParty : Party -> Party -> [Party] -> Text -> Bool -> Script ()
+onboardParty admin party observers jurisdiction accredited = do
+  _ <- submit admin do
+    createCmd Participant with
+      participantAdmin = admin; party; observers
+      jurisdiction; isAccredited = accredited; status = Eligible
+  _ <- submit admin do
+    createCmd WalletApproval with
+      walletAdmin = admin; owner = party; observers; active = True
+  pure ()
+
+
+-- Helper: mint tokens for a party
+mintFor : TestSetup -> Party -> Decimal -> Decimal -> Script (ContractId HectXHolding)
+mintFor ts investor amount marketPrice = do
+  now <- getTime
+  req <- submit investor do
+    createCmd MintRequest with
+      requestAdmin = ts.admin; investor; amount; requestedAt = now
+  receipt <- submit ts.admin do
+    exerciseCmd req ApproveMint with
+      registryCid = ts.registryCid; marketPrice
+  -- Find the holding
+  holdings <- query @HectXHolding ts.admin
+  let found = [ cid | (cid, h) <- holdings, h.owner == investor, h.instrumentId == ts.instrumentId ]
+  case found of
+    (cid :: _) -> pure cid
+    [] -> error "holding not found after mint"
+
+
+-- ═══════════════════════════════════════════════════
+-- TEST 1: Original mint and transfer (happy path)
+-- ═══════════════════════════════════════════════════
 
 setupAndMint : Script (Party, Party, Party, Api.Token.HoldingV1.InstrumentId, ContractId HectXTransferFactory)
 setupAndMint = script do
@@ -150,6 +252,261 @@ test_HectX_Mint_And_Transfer = script do
   assertMsg "unexpected alice amount" (aliceHolding2.amount == 900.0)
 
 
--- Daml test entrypoint
+-- ═══════════════════════════════════════════════════
+-- TEST 2: Jurisdiction rejection (US investor)
+-- ═══════════════════════════════════════════════════
+
+test_jurisdiction_rejection : Script ()
+test_jurisdiction_rejection = script do
+  ts <- setupLedger "Jur" 0.0 0.0 0.0 False 100.0 3600
+
+  -- Onboard a US-based investor (jurisdiction is prohibited)
+  _ <- submit ts.admin do
+    createCmd Participant with
+      participantAdmin = ts.admin; party = ts.alice
+      observers = [ts.alice]; jurisdiction = "United States"
+      isAccredited = True; status = Eligible
+  _ <- submit ts.admin do
+    createCmd WalletApproval with
+      walletAdmin = ts.admin; owner = ts.alice
+      observers = [ts.alice]; active = True
+
+  now <- getTime
+  req <- submit ts.alice do
+    createCmd MintRequest with
+      requestAdmin = ts.admin; investor = ts.alice
+      amount = 100.0; requestedAt = now
+
+  -- Must fail: "investor jurisdiction prohibited"
+  submitMustFail ts.admin do
+    exerciseCmd req ApproveMint with
+      registryCid = ts.registryCid; marketPrice = 1.0
+
+  pure ()
+
+
+-- ═══════════════════════════════════════════════════
+-- TEST 3: Wallet deactivation blocks transfer
+-- ═══════════════════════════════════════════════════
+
+test_wallet_deactivation : Script ()
+test_wallet_deactivation = script do
+  ts <- setupLedger "Wal" 0.0 0.0 0.0 False 100.0 3600
+
+  onboardParty ts.admin ts.alice [ts.alice, ts.bob] "Portugal" True
+  onboardParty ts.admin ts.bob [ts.alice, ts.bob] "Portugal" True
+
+  holdingCid <- mintFor ts ts.alice 1000.0 1.0
+
+  -- Deactivate Bob's wallet
+  walletResult <- queryContractKey @WalletApproval ts.admin (ts.admin, ts.bob)
+  case walletResult of
+    Some (walletCid, _) ->
+      submit ts.admin do
+        exerciseCmd walletCid SetActive with newActive = False
+    None -> error "bob wallet approval not found"
+
+  -- Transfer should fail: "receiver wallet not active"
+  now <- getTime
+  let transfer = Api.Token.TransferInstructionV1.Transfer with
+        sender = ts.alice; receiver = ts.bob; amount = 50.0
+        instrumentId = ts.instrumentId
+        requestedAt = datetime 1970 Jan 1 0 0 0
+        executeBefore = addRelTime now (seconds 600)
+        inputHoldingCids = [toInterfaceContractId holdingCid]
+        meta = Api.Token.MetadataV1.emptyMetadata
+  let extraArgs = Api.Token.MetadataV1.ExtraArgs with
+        context = Api.Token.MetadataV1.emptyChoiceContext
+        meta = Api.Token.MetadataV1.emptyMetadata
+
+  submitMustFail (actAs [ts.alice, ts.admin]) do
+    exerciseCmd (toInterfaceContractId @Api.Token.TransferInstructionV1.TransferFactory ts.tfCid) TransferFactory_Transfer with
+      expectedAdmin = ts.admin; transfer; extraArgs
+
+  pure ()
+
+
+-- ═══════════════════════════════════════════════════
+-- TEST 4: Elastic fee calculation (market price > NAV)
+-- ═══════════════════════════════════════════════════
+
+test_elastic_fee : Script ()
+test_elastic_fee = script do
+  -- elasticFeeActive=True, elasticFeeBps=100 (1%)
+  ts <- setupLedger "Elast" 0.0 0.0 0.0 True 100.0 3600
+
+  onboardParty ts.admin ts.alice [ts.alice] "Portugal" True
+
+  now <- getTime
+  req <- submit ts.alice do
+    createCmd MintRequest with
+      requestAdmin = ts.admin; investor = ts.alice
+      amount = 100.0; requestedAt = now
+
+  -- NAV=1000, supply=0 → navPerToken=1.0
+  -- marketPrice=2.0, premium=1.0
+  -- elasticFee = 1.0 * 100.0 / 10000.0 = 0.01
+  -- netAmount = 100.0 - 0 - 0 - 0.01 = 99.99
+  -- mintedAmount = 99.99 / 1.0 = 99.99
+  _ <- submit ts.admin do
+    exerciseCmd req ApproveMint with
+      registryCid = ts.registryCid; marketPrice = 2.0
+
+  holdings <- query @HectXHolding ts.admin
+  let found = [ h | (_cid, h) <- holdings, h.owner == ts.alice, h.instrumentId == ts.instrumentId ]
+  case found of
+    [h] -> assertMsg ("elastic fee: expected 99.99, got " <> show h.amount) (h.amount == 99.99)
+    _ -> error "unexpected holdings after elastic fee mint"
+
+  pure ()
+
+
+-- ═══════════════════════════════════════════════════
+-- TEST 5: Fee deductions are correct
+-- ═══════════════════════════════════════════════════
+
+test_fee_deductions : Script ()
+test_fee_deductions = script do
+  -- subFeeBps=200 (2%), convFeeBps=100 (1%)
+  ts <- setupLedger "Fees" 200.0 100.0 0.0 False 100.0 3600
+
+  onboardParty ts.admin ts.alice [ts.alice] "Portugal" True
+
+  now <- getTime
+  req <- submit ts.alice do
+    createCmd MintRequest with
+      requestAdmin = ts.admin; investor = ts.alice
+      amount = 1000.0; requestedAt = now
+
+  -- subFee = 1000 * 200/10000 = 20
+  -- convFee = 1000 * 100/10000 = 10
+  -- netAmount = 1000 - 20 - 10 = 970
+  -- navPerToken = 1.0 (supply=0)
+  -- mintedAmount = 970
+  _ <- submit ts.admin do
+    exerciseCmd req ApproveMint with
+      registryCid = ts.registryCid; marketPrice = 1.0
+
+  holdings <- query @HectXHolding ts.admin
+  let found = [ h | (_cid, h) <- holdings, h.owner == ts.alice, h.instrumentId == ts.instrumentId ]
+  case found of
+    [h] -> assertMsg ("fee deduction: expected 970.0, got " <> show h.amount) (h.amount == 970.0)
+    _ -> error "unexpected holdings after fee deduction mint"
+
+  pure ()
+
+
+-- ═══════════════════════════════════════════════════
+-- TEST 6: Transfer with insufficient balance
+-- ═══════════════════════════════════════════════════
+
+test_insufficient_balance : Script ()
+test_insufficient_balance = script do
+  ts <- setupLedger "Insuf" 0.0 0.0 0.0 False 100.0 3600
+
+  onboardParty ts.admin ts.alice [ts.alice, ts.bob] "Portugal" True
+  onboardParty ts.admin ts.bob [ts.alice, ts.bob] "Portugal" True
+
+  holdingCid <- mintFor ts ts.alice 100.0 1.0
+
+  -- Try to transfer 200 (more than the 100 minted) — should fail
+  now <- getTime
+  let transfer = Api.Token.TransferInstructionV1.Transfer with
+        sender = ts.alice; receiver = ts.bob; amount = 200.0
+        instrumentId = ts.instrumentId
+        requestedAt = datetime 1970 Jan 1 0 0 0
+        executeBefore = addRelTime now (seconds 600)
+        inputHoldingCids = [toInterfaceContractId holdingCid]
+        meta = Api.Token.MetadataV1.emptyMetadata
+  let extraArgs = Api.Token.MetadataV1.ExtraArgs with
+        context = Api.Token.MetadataV1.emptyChoiceContext
+        meta = Api.Token.MetadataV1.emptyMetadata
+
+  submitMustFail (actAs [ts.alice, ts.admin]) do
+    exerciseCmd (toInterfaceContractId @Api.Token.TransferInstructionV1.TransferFactory ts.tfCid) TransferFactory_Transfer with
+      expectedAdmin = ts.admin; transfer; extraArgs
+
+  pure ()
+
+
+-- ═══════════════════════════════════════════════════
+-- TEST 7: NAV staleness rejection
+-- (Run last because passTime advances global clock)
+-- ═══════════════════════════════════════════════════
+
+test_nav_staleness : Script ()
+test_nav_staleness = script do
+  -- Create a custom setup with a very old NAV snapshot
+  admin <- allocateParty "StaleAdmin"
+  alice <- allocateParty "StaleAlice"
+  let instrumentId = Api.Token.HoldingV1.InstrumentId with admin; id = "HECTX"
+
+  elig <- submit admin do
+    createCmd EligibilityPolicy with
+      eligibilityAdmin = admin
+      prohibitedJurisdictions = ["United States"]
+      restrictedJurisdictions = mempty
+
+  fees <- submit admin do
+    createCmd FeeSchedule with
+      feeAdmin = admin; subscriptionFeeBps = 0.0; conversionFeeBps = 0.0; managementFeeBps = 0.0
+
+  mintPol <- submit admin do
+    createCmd MintPolicy with
+      mintPolicyAdmin = admin; mintingEnabled = True
+      elasticFeeActive = False; elasticFeeBps = 100.0
+      maxNavAgeSeconds = 1   -- Very short: 1 second max
+
+  reg <- submit admin do
+    createCmd HectXRegistry with
+      admin; instrumentId
+      eligibilityPolicyCid = elig; feeScheduleCid = fees; mintPolicyCid = mintPol
+
+  _ <- submit admin do
+    createCmd Supply with supplyAdmin = admin; totalSupply = 0.0
+
+  -- Create NAV snapshot with a pre-epoch timestamp.
+  -- In IDE-ledger mode, getTime inside choices returns epoch (1970-01-01T00:00:00Z),
+  -- while getTime in Script context returns wallclock time. We need a timestamp
+  -- that is in the past relative to epoch for the staleness check to trigger.
+  _ <- submit admin do
+    createCmd NAVSnapshot with
+      navAdmin = admin; nav = 1000.0; gav = 1000.0; reserves = 1000.0
+      liabilities = 0.0; accruedFees = 0.0
+      timestamp = datetime 1969 Jan 1 0 0 0   -- 1 year before epoch
+
+  _ <- submit admin do
+    createCmd Participant with
+      participantAdmin = admin; party = alice; observers = [alice]
+      jurisdiction = "Portugal"; isAccredited = True; status = Eligible
+  _ <- submit admin do
+    createCmd WalletApproval with
+      walletAdmin = admin; owner = alice; observers = [alice]; active = True
+
+  -- Use epoch as requestedAt since that's what getTime returns inside choices
+  req <- submit alice do
+    createCmd MintRequest with
+      requestAdmin = admin; investor = alice
+      amount = 100.0; requestedAt = datetime 1970 Jan 1 0 0 0
+
+  -- Must fail: "NAV snapshot too old" (age ~1 year >> 1 second max)
+  submitMustFail admin do
+    exerciseCmd req ApproveMint with
+      registryCid = reg; marketPrice = 1.0
+
+  pure ()
+
+
+-- ═══════════════════════════════════════════════════
+-- Main entrypoint — runs all tests
+-- ═══════════════════════════════════════════════════
+
 main : Script ()
-main = test_HectX_Mint_And_Transfer
+main = do
+  test_HectX_Mint_And_Transfer
+  test_jurisdiction_rejection
+  test_wallet_deactivation
+  test_elastic_fee
+  test_fee_deductions
+  test_insufficient_balance
+  test_nav_staleness  -- last: uses passTime

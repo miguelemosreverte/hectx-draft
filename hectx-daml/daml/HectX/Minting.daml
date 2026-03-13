@@ -44,9 +44,11 @@ template MintRequest
         (_, investorP) <- fetchByKey @Participant (requestAdmin, investor)
         (_, investorW) <- fetchByKey @WalletApproval (requestAdmin, investor)
 
+        eligPolicy <- fetch reg.eligibilityPolicyCid
         require "minting disabled" policy.mintingEnabled
         require "investor not eligible" (investorP.status == Eligible)
         require "wallet not active" investorW.active
+        require "investor jurisdiction prohibited" (not (investorP.jurisdiction `elem` eligPolicy.prohibitedJurisdictions))
 
         let navAge = subTime now navSnap.timestamp
         require "NAV snapshot too old" (navAge <= seconds policy.maxNavAgeSeconds)

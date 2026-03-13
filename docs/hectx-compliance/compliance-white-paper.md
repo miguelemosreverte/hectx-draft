@@ -14,8 +14,9 @@ This white paper documents how each regulatory and product requirement is enforc
 
 ### Key Figures
 - **70 documented requirements** across 9 domains
-- **30 fully implemented** (43%), **14 partially implemented** (20%), **3 intentionally off-ledger** (4%)
+- **32 fully implemented** (46%), **12 partially implemented** (17%), **3 intentionally off-ledger** (4%)
 - **23 not yet implemented** (33%) — primarily portfolio management, corporate actions, and extended fees
+- **Session 3:** Jurisdiction enforcement added to mint and transfer flows; 7 Daml tests passing
 - **100% Splice Token Standard compliance** — both Holding and TransferFactory interfaces
 
 ---
@@ -113,9 +114,9 @@ data RestrictedRule = RestrictedRule with
     minIncome : Optional Decimal
 ```
 
-**Gap:** The policy data structures exist but jurisdiction validation is not yet enforced at the `ApproveMint` or `TransferFactory_Transfer` enforcement points. The `Participant.jurisdiction` field is stored but not cross-referenced against `EligibilityPolicy.prohibitedJurisdictions`.
+**Status (Session 3):** Jurisdiction enforcement is now fully implemented. `ApproveMint` (`Minting.daml:51`) cross-references `Participant.jurisdiction` against `EligibilityPolicy.prohibitedJurisdictions` and aborts if the investor's jurisdiction is prohibited. `runTransfer` (`Transfers.daml:60-61`) performs the same check for both sender and receiver. `EligibilityPolicy` was given a contract key (`Policy.daml:22-23`) to support `fetchByKey` in the transfer flow.
 
-**Mitigation plan:** Session 3 will add jurisdiction enforcement to both mint and transfer flows, with Daml test coverage for prohibited and restricted jurisdiction scenarios.
+**Test coverage:** `test_jurisdiction_rejection` verifies that a US-based investor cannot mint tokens when "United States" is in the prohibited list.
 
 ### 2.3 Minting Compliance
 
@@ -244,7 +245,7 @@ interface instance TransferFactory for HectXTransferFactory where
 
 | Gap | Risk | Severity | Mitigation | Timeline |
 |-----|------|----------|------------|----------|
-| Jurisdiction not enforced at enforcement points | Prohibited-jurisdiction investor could mint or receive tokens | **High** | Add jurisdiction cross-reference in ApproveMint and runTransfer | Session 3 |
+| ~~Jurisdiction not enforced at enforcement points~~ | ~~Prohibited-jurisdiction investor could mint or receive tokens~~ | ~~**High**~~ | **RESOLVED (Session 3):** Jurisdiction enforced in `Minting.daml:51` and `Transfers.daml:60-61` | **Done** |
 | No global transfer pause | Cannot halt all transfers during emergency | **Medium-High** | Add `transfersEnabled` flag to a policy contract | Session 3 |
 
 ### 4.2 Medium-Severity Gaps
