@@ -4,7 +4,15 @@
    Drives the demo UI against the real HECTX backend
    (hectx-services/src/demo-server.ts) which talks to
    the Daml ledger via the Canton JSON API.
+
+   Query params:
+     ?autoplay       — auto-run all steps on load
+     ?delay=N        — ms between steps (default 800)
    ═══════════════════════════════════════════════════ */
+
+const params = new URLSearchParams(window.location.search);
+const isAutoplay = params.has("autoplay");
+const stepDelay = Number(params.get("delay")) || 800;
 
 const demoState = {
   phase: "idle", // idle | running | done
@@ -64,7 +72,10 @@ function markStep(name, status) {
   const el = $(`#step-${name}`);
   if (!el) return;
   el.classList.remove("active", "done", "rejected");
-  if (status === "active") el.classList.add("active");
+  if (status === "active") {
+    el.classList.add("active");
+    el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
   if (status === "done") {
     el.classList.add("done");
     demoState.completed.add(name);
@@ -76,15 +87,10 @@ function markStep(name, status) {
 }
 
 function setStepResult(name, text) {
-  const detail = $(`#detail-${name}`);
-  if (!detail) return;
-  let resultEl = detail.querySelector(".step-result");
-  if (!resultEl) {
-    resultEl = document.createElement("div");
-    resultEl.className = "step-result";
-    detail.appendChild(resultEl);
-  }
+  const resultEl = $(`#result-${name}`);
+  if (!resultEl) return;
   resultEl.textContent = text;
+  resultEl.classList.add("visible");
 }
 
 /* ─── KPI Updates ─── */
@@ -99,27 +105,27 @@ function updateKPIs() {
 function updateCompliance() {
   const dotPolicy = $("#dot-policy");
   dotPolicy.className = `status-dot ${demoState.policyActive ? "active" : "pending"}`;
-  $("#val-prohibited").textContent = demoState.policyActive ? "United States" : "—";
-  $("#val-restricted").textContent = demoState.policyActive ? "BR, EEA, HK, MY, SG, CH, UK" : "—";
+  $("#val-prohibited").textContent = demoState.policyActive ? "United States" : "\u2014";
+  $("#val-restricted").textContent = demoState.policyActive ? "BR, EEA, HK, MY, SG, CH, UK" : "\u2014";
 
   const dotAlice = $("#dot-alice");
   dotAlice.className = `status-dot ${demoState.aliceCompliant ? "active" : "pending"}`;
-  $("#val-alice-jurisdiction").textContent = demoState.aliceCompliant ? "Portugal" : "—";
-  $("#val-alice-status").textContent = demoState.aliceCompliant ? "Eligible" : "—";
-  $("#val-alice-wallet").textContent = demoState.aliceCompliant ? "Active" : "—";
+  $("#val-alice-jurisdiction").textContent = demoState.aliceCompliant ? "Portugal" : "\u2014";
+  $("#val-alice-status").textContent = demoState.aliceCompliant ? "Eligible" : "\u2014";
+  $("#val-alice-wallet").textContent = demoState.aliceCompliant ? "Active" : "\u2014";
 
   const dotBob = $("#dot-bob");
   dotBob.className = `status-dot ${demoState.bobCompliant ? "active" : "pending"}`;
-  $("#val-bob-jurisdiction").textContent = demoState.bobCompliant ? "Portugal" : "—";
-  $("#val-bob-status").textContent = demoState.bobCompliant ? "Eligible" : "—";
-  $("#val-bob-wallet").textContent = demoState.bobCompliant ? "Active" : "—";
+  $("#val-bob-jurisdiction").textContent = demoState.bobCompliant ? "Portugal" : "\u2014";
+  $("#val-bob-status").textContent = demoState.bobCompliant ? "Eligible" : "\u2014";
+  $("#val-bob-wallet").textContent = demoState.bobCompliant ? "Active" : "\u2014";
 }
 
 /* ─── Holdings Table ─── */
 function updateHoldings() {
   const tbody = $("#holdings-body");
   if (demoState.holdings.length === 0) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No holdings — run the workflow to mint tokens</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No holdings \u2014 run the workflow to mint tokens</td></tr>';
     return;
   }
   tbody.innerHTML = demoState.holdings
@@ -159,7 +165,7 @@ async function refreshFromLedger() {
 
 async function runSetup() {
   markStep("setup", "active");
-  log("Initializing ledger — creating policies, compliance records, and factory...", "info");
+  log("Initializing ledger \u2014 creating policies, compliance records, and factory...", "info");
 
   try {
     const res = await api("/api/setup");
@@ -169,15 +175,15 @@ async function runSetup() {
 
     markStep("setup", "done");
     setStepResult("setup",
-      `Registry:  ${res.registryCid}\nFactory:   ${res.transferFactoryCid}`
+      `Registry:  ${res.registryCid.slice(0, 16)}...\nFactory:   ${res.transferFactoryCid.slice(0, 16)}...`
     );
-    log(`EligibilityPolicy created — prohibited: [United States]`, "success");
-    log(`FeeSchedule created — subscription: 0 bps, conversion: 0 bps`, "success");
-    log(`MintPolicy created — enabled: true, elastic: inactive, maxAge: 3600s`, "success");
-    log(`HectXRegistry created — CID: ${res.registryCid}`, "success");
-    log(`NAVSnapshot created — NAV: $1,000, GAV: $1,000, reserves: $1,000`, "success");
-    log(`Supply initialized — 0.00 HECTX`, "success");
-    log(`HectXTransferFactory created — Splice TransferFactory interface`, "success");
+    log(`EligibilityPolicy created \u2014 prohibited: [United States]`, "success");
+    log(`FeeSchedule created \u2014 subscription: 0 bps, conversion: 0 bps`, "success");
+    log(`MintPolicy created \u2014 enabled: true, elastic: inactive, maxAge: 3600s`, "success");
+    log(`HectXRegistry created`, "success");
+    log(`NAVSnapshot created \u2014 NAV: $1,000, GAV: $1,000, reserves: $1,000`, "success");
+    log(`Supply initialized \u2014 0.00 HECTX`, "success");
+    log(`HectXTransferFactory created \u2014 Splice TransferFactory interface`, "success");
 
     updateCompliance();
     updateKPIs();
@@ -198,27 +204,18 @@ async function runMint() {
     demoState.aliceCompliant = true;
 
     markStep("mint", "done");
-    setStepResult("mint",
-      `MintRequest: ${res.requestCid}\nOutcome:     Minted`
-    );
-    log(`Participant (Alice) created — jurisdiction: Portugal, status: Eligible`, "success");
-    log(`WalletApproval (Alice) created — active: true`, "success");
-    log(`MintRequest submitted — investor: Alice, amount: 1,000.00`, "info");
-    log(`ApproveMint executed — 7 compliance checks passed:`, "success");
-    log(`  ✓ mintingEnabled == True`, "success");
-    log(`  ✓ investor.status == Eligible`, "success");
-    log(`  ✓ wallet.active == True`, "success");
-    log(`  ✓ jurisdiction "Portugal" not in prohibitedJurisdictions`, "success");
-    log(`  ✓ NAV age ≤ 3600s`, "success");
-    log(`  ✓ fees computed (sub: 0 bps, conv: 0 bps, elastic: N/A)`, "success");
-    log(`  ✓ netAmount > 0`, "success");
-    log(`MintReceipt created — CID: ${res.requestCid}`, "success");
+    setStepResult("mint", `Investor: Alice  |  Amount: 1,000 HECTX  |  Outcome: Minted`);
+    log(`Participant (Alice) created \u2014 jurisdiction: Portugal, status: Eligible`, "success");
+    log(`WalletApproval (Alice) created \u2014 active: true`, "success");
+    log(`MintRequest submitted \u2014 investor: Alice, amount: 1,000.00`, "info");
+    log(`ApproveMint executed \u2014 7 compliance checks passed`, "success");
+    log(`MintReceipt created`, "success");
 
     updateCompliance();
     await refreshFromLedger();
 
-    log(`HectXHolding created — Alice: ${demoState.supply.toLocaleString("en-US", { minimumFractionDigits: 2 })} HECTX`, "success");
-    log(`Supply updated → ${demoState.supply.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, "info");
+    log(`HectXHolding created \u2014 Alice: ${demoState.supply.toLocaleString("en-US", { minimumFractionDigits: 2 })} HECTX`, "success");
+    log(`Supply updated \u2192 ${demoState.supply.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, "info");
     return true;
   } catch (err) {
     log(`Mint failed: ${err.message}`, "error");
@@ -236,18 +233,10 @@ async function runTransfer() {
     demoState.bobCompliant = true;
 
     markStep("transfer", "done");
-    setStepResult("transfer",
-      `Interface:   TransferFactory_Transfer (Splice)\nSender:      Alice → Bob\nAmount:      100.00 HECTX\nCompliance:  6 checks passed`
-    );
-    log(`Participant (Bob) created — jurisdiction: Portugal, status: Eligible`, "success");
-    log(`WalletApproval (Bob) created — active: true`, "success");
-    log(`TransferFactory_Transfer executed — 6 compliance checks passed:`, "success");
-    log(`  ✓ sender.status == Eligible`, "success");
-    log(`  ✓ receiver.status == Eligible`, "success");
-    log(`  ✓ sender wallet active`, "success");
-    log(`  ✓ receiver wallet active`, "success");
-    log(`  ✓ sender jurisdiction "Portugal" not prohibited`, "success");
-    log(`  ✓ receiver jurisdiction "Portugal" not prohibited`, "success");
+    setStepResult("transfer", `Alice \u2192 Bob  |  100.00 HECTX  |  Splice TransferFactory`);
+    log(`Participant (Bob) created \u2014 jurisdiction: Portugal, status: Eligible`, "success");
+    log(`WalletApproval (Bob) created \u2014 active: true`, "success");
+    log(`TransferFactory_Transfer executed \u2014 6 compliance checks passed`, "success");
 
     updateCompliance();
     await refreshFromLedger();
@@ -255,8 +244,8 @@ async function runTransfer() {
     const aliceBal = demoState.holdings.find(h => h.owner === "Alice")?.amount ?? 0;
     const bobBal = demoState.holdings.find(h => h.owner === "Bob")?.amount ?? 0;
     log(`Input holding archived`, "info");
-    log(`Receiver holding created — Bob: ${bobBal.toLocaleString("en-US", { minimumFractionDigits: 2 })} HECTX`, "success");
-    log(`Change holding created — Alice: ${aliceBal.toLocaleString("en-US", { minimumFractionDigits: 2 })} HECTX`, "success");
+    log(`Receiver holding created \u2014 Bob: ${bobBal.toLocaleString("en-US", { minimumFractionDigits: 2 })} HECTX`, "success");
+    log(`Change holding created \u2014 Alice: ${aliceBal.toLocaleString("en-US", { minimumFractionDigits: 2 })} HECTX`, "success");
     return true;
   } catch (err) {
     log(`Transfer failed: ${err.message}`, "error");
@@ -277,14 +266,14 @@ async function runVerify() {
 
     markStep("verify", "done");
     setStepResult("verify",
-      `Alice balance:   ${aliceBal.toLocaleString()} HECTX\nBob balance:     ${bobBal.toLocaleString()} HECTX\nHoldings count:  ${status.holdingsCount}\nTotal supply:    ${status.totalSupply.toLocaleString()} HECTX`
+      `Alice: ${aliceBal.toLocaleString()} HECTX  |  Bob: ${bobBal.toLocaleString()} HECTX  |  Supply: ${status.totalSupply.toLocaleString()}`
     );
 
     log(`Final state verified:`, "success");
     log(`  Alice: ${aliceBal.toLocaleString()} HECTX`, "success");
     log(`  Bob:   ${bobBal.toLocaleString()} HECTX`, "success");
     log(`  Holdings: ${status.holdingsCount} contracts on ledger`, "success");
-    log(`  Supply invariant: ${aliceBal} + ${bobBal} = ${aliceBal + bobBal} ✓`, "success");
+    log(`  Supply invariant: ${aliceBal} + ${bobBal} = ${aliceBal + bobBal}`, "success");
 
     await refreshFromLedger();
     return true;
@@ -298,45 +287,43 @@ async function runVerify() {
 /* ─── Step 5: Rejection ─── */
 async function runRejection() {
   markStep("rejection", "active");
-  log("═══ Compliance Rejection Scenario ═══", "info");
-  log("Creating Charlie (US-based investor) — jurisdiction: United States", "info");
+  log("\u2550\u2550\u2550 Compliance Rejection Scenario \u2550\u2550\u2550", "info");
+  log("Creating Charlie (US-based investor) \u2014 jurisdiction: United States", "info");
 
   try {
     const res = await api("/api/rejection");
 
-    // Show Charlie's compliance card
+    // Reveal Charlie card (remove dimmed class)
     const card = $("#card-charlie");
-    if (card) card.style.display = "";
+    if (card) card.classList.remove("dimmed");
 
     $("#val-charlie-jurisdiction").textContent = "United States";
     $("#val-charlie-status").textContent = "Eligible";
     $("#val-charlie-wallet").textContent = "Active";
 
-    log(`Participant (Charlie) created — jurisdiction: United States, status: Eligible`, "success");
-    log(`WalletApproval (Charlie) created — active: true`, "success");
-    log(`MintRequest submitted — investor: Charlie, amount: 500.00`, "info");
-    log(`ApproveMint executing — compliance checks:`, "info");
-    log(`  ✓ mintingEnabled == True`, "success");
-    log(`  ✓ investor.status == Eligible`, "success");
-    log(`  ✓ wallet.active == True`, "success");
-    log(`  ✗ jurisdiction "United States" IS in prohibitedJurisdictions`, "error");
-    log(`ApproveMint ABORTED — "${res.reason}"`, "error");
-    log(`MintRequest rolled back — no tokens minted, no supply change`, "error");
+    log(`Participant (Charlie) created \u2014 jurisdiction: United States, status: Eligible`, "success");
+    log(`WalletApproval (Charlie) created \u2014 active: true`, "success");
+    log(`MintRequest submitted \u2014 investor: Charlie, amount: 500.00`, "info");
+    log(`ApproveMint executing \u2014 compliance checks:`, "info");
+    log(`  \u2713 mintingEnabled == True`, "success");
+    log(`  \u2713 investor.status == Eligible`, "success");
+    log(`  \u2713 wallet.active == True`, "success");
+    log(`  \u2717 jurisdiction "United States" IS in prohibitedJurisdictions`, "error");
+    log(`ApproveMint ABORTED \u2014 transaction rolled back`, "error");
 
     // Mark Charlie as rejected
     const dotCharlie = $("#dot-charlie");
     if (dotCharlie) dotCharlie.className = "status-dot rejected";
     $("#val-charlie-mint").textContent = "BLOCKED";
-    const charlieCard = $("#card-charlie");
-    if (charlieCard) charlieCard.classList.add("rejected");
+    if (card) card.classList.add("rejected");
 
     markStep("rejection", "rejected");
     setStepResult("rejection",
-      `Investor:    Charlie (US)\nJurisdiction: United States\nPolicy check: FAILED — prohibited jurisdiction\nOutcome:     MintRequest REJECTED\nTokens:      0 (no change to supply)`
+      `Charlie (US)  |  Jurisdiction: PROHIBITED  |  Mint: BLOCKED`
     );
 
-    log(`Compliance enforcement verified — prohibited jurisdiction blocks on-ledger`, "success");
-    log(`═══ Rejection scenario complete ═══`, "info");
+    log(`Compliance enforcement verified \u2014 prohibited jurisdiction blocks on-ledger`, "success");
+    log(`\u2550\u2550\u2550 Rejection scenario complete \u2550\u2550\u2550`, "info");
     return true;
   } catch (err) {
     log(`Rejection demo error: ${err.message}`, "error");
@@ -349,34 +336,43 @@ async function runRejection() {
 async function runAll() {
   if (demoState.phase === "running") return;
   demoState.phase = "running";
+  document.body.setAttribute("data-demo-phase", "running");
 
   const btn = $("#run-all");
   btn.disabled = true;
   btn.textContent = "Running...";
 
-  log("═══ Starting full HECTX demo scenario ═══", "info");
+  log("\u2550\u2550\u2550 Starting full HECTX demo scenario \u2550\u2550\u2550", "info");
 
   const ok1 = await runSetup();
-  if (!ok1) { btn.disabled = false; btn.textContent = "Run All Steps"; demoState.phase = "idle"; return; }
-  await delay(400);
+  if (!ok1) { fail(); return; }
+  await delay(stepDelay);
 
   const ok2 = await runMint();
-  if (!ok2) { btn.disabled = false; btn.textContent = "Run All Steps"; demoState.phase = "idle"; return; }
-  await delay(400);
+  if (!ok2) { fail(); return; }
+  await delay(stepDelay);
 
   const ok3 = await runTransfer();
-  if (!ok3) { btn.disabled = false; btn.textContent = "Run All Steps"; demoState.phase = "idle"; return; }
-  await delay(400);
+  if (!ok3) { fail(); return; }
+  await delay(stepDelay);
 
   const ok4 = await runVerify();
-  if (!ok4) { btn.disabled = false; btn.textContent = "Run All Steps"; demoState.phase = "idle"; return; }
-  await delay(400);
+  if (!ok4) { fail(); return; }
+  await delay(stepDelay);
 
   await runRejection();
 
-  log("═══ Full demo scenario complete ═══", "info");
+  log("\u2550\u2550\u2550 Full demo scenario complete \u2550\u2550\u2550", "info");
   demoState.phase = "done";
+  document.body.setAttribute("data-demo-phase", "done");
   btn.textContent = "Complete";
+
+  function fail() {
+    btn.disabled = false;
+    btn.textContent = "Run All Steps";
+    demoState.phase = "idle";
+    document.body.setAttribute("data-demo-phase", "error");
+  }
 }
 
 /* ─── Reset ─── */
@@ -395,21 +391,25 @@ async function reset() {
   demoState.logEntries = 0;
 
   $$(".step").forEach((el) => el.classList.remove("active", "done", "rejected"));
-  $$(".step-result").forEach((el) => el.remove());
+  $$(".step-result").forEach((el) => {
+    el.textContent = "";
+    el.classList.remove("visible");
+  });
 
   const card = $("#card-charlie");
-  if (card) { card.style.display = "none"; card.classList.remove("rejected"); }
+  if (card) { card.classList.add("dimmed"); card.classList.remove("rejected"); }
 
   logEl.innerHTML = "";
   logCountEl.textContent = "0 entries";
   const btn = $("#run-all");
   btn.disabled = false;
   btn.textContent = "Run All Steps";
+  document.body.setAttribute("data-demo-phase", "idle");
 
   updateKPIs();
   updateCompliance();
   updateHoldings();
-  log("Demo reset — ready for new scenario", "info");
+  log("Demo reset \u2014 ready for new scenario", "info");
 }
 
 /* ─── Utils ─── */
@@ -437,7 +437,18 @@ $$("[data-action]").forEach((btn) => {
 });
 
 /* ─── Init ─── */
+document.body.setAttribute("data-demo-phase", "idle");
 updateKPIs();
 updateCompliance();
 updateHoldings();
-log("HECTX Demo ready — click 'Run All Steps' or run steps individually", "info");
+log("HECTX Demo ready \u2014 click 'Run All Steps' or run steps individually", "info");
+
+/* ─── Autoplay ─── */
+if (isAutoplay) {
+  requestAnimationFrame(() => {
+    setTimeout(async () => {
+      await fetch("/api/reset", { method: "POST" });
+      runAll();
+    }, 300);
+  });
+}

@@ -22,9 +22,12 @@ require msg cond = if cond then pure () else abort msg
 runTransfer
   : Party
   -> Api.Token.HoldingV1.InstrumentId
+  -> ContractId EligibilityPolicy
+  -> [(Party, ContractId Participant)]
+  -> [(Party, ContractId WalletApproval)]
   -> TransferFactory_Transfer
   -> Update TransferInstructionResult
-runTransfer admin factoryInstrumentId arg = do
+runTransfer admin factoryInstrumentId eligPolicyCid participants wallets arg = do
   now <- getTime
   let TransferFactory_Transfer{..} = arg
   require "expectedAdmin mismatch" (expectedAdmin == admin)
@@ -32,22 +35,17 @@ runTransfer admin factoryInstrumentId arg = do
   require "executeBefore must be in the future" (transfer.executeBefore > now)
   require "instrumentId mismatch" (transfer.instrumentId == factoryInstrumentId)
 
-  -- Compliance checks
-  senderPCid <- lookupByKey @Participant (admin, transfer.sender)
-  receiverPCid <- lookupByKey @Participant (admin, transfer.receiver)
-  senderWCid <- lookupByKey @WalletApproval (admin, transfer.sender)
-  receiverWCid <- lookupByKey @WalletApproval (admin, transfer.receiver)
-
-  senderP <- case senderPCid of
+  -- Compliance checks: look up participant and wallet CIDs from stored lists
+  senderP <- case lookup transfer.sender participants of
     None -> abort "sender participant missing"
     Some cid -> fetch cid
-  receiverP <- case receiverPCid of
+  receiverP <- case lookup transfer.receiver participants of
     None -> abort "receiver participant missing"
     Some cid -> fetch cid
-  senderW <- case senderWCid of
+  senderW <- case lookup transfer.sender wallets of
     None -> abort "sender wallet approval missing"
     Some cid -> fetch cid
-  receiverW <- case receiverWCid of
+  receiverW <- case lookup transfer.receiver wallets of
     None -> abort "receiver wallet approval missing"
     Some cid -> fetch cid
   require "sender not eligible" (senderP.status == Eligible)
@@ -56,7 +54,7 @@ runTransfer admin factoryInstrumentId arg = do
   require "receiver wallet not active" receiverW.active
 
   -- Jurisdiction enforcement
-  (_, eligPolicy) <- fetchByKey @EligibilityPolicy admin
+  eligPolicy <- fetch eligPolicyCid
   require "sender jurisdiction prohibited" (not (senderP.jurisdiction `elem` eligPolicy.prohibitedJurisdictions))
   require "receiver jurisdiction prohibited" (not (receiverP.jurisdiction `elem` eligPolicy.prohibitedJurisdictions))
 
@@ -106,10 +104,24 @@ template HectXTransferFactory
   with
     admin : Party
     factoryInstrumentId : Api.Token.HoldingV1.InstrumentId
+    eligibilityPolicyCid : ContractId EligibilityPolicy
+    knownParticipants : [(Party, ContractId Participant)]
+    knownWallets : [(Party, ContractId WalletApproval)]
     observers : [Party]
   where
     signatory admin
     observer observers
+
+    choice RegisterParty : ContractId HectXTransferFactory
+      with
+        party : Party
+        participantCid : ContractId Participant
+        walletCid : ContractId WalletApproval
+      controller admin
+      do
+        create this with
+          knownParticipants = (party, participantCid) :: knownParticipants
+          knownWallets = (party, walletCid) :: knownWallets
 
     interface instance TransferFactory for HectXTransferFactory where
       view = TransferFactoryView with
@@ -120,7 +132,7 @@ template HectXTransferFactory
         admin
         meta = emptyMeta
 
-      transferFactory_transferImpl _ arg = runTransfer admin factoryInstrumentId arg
+      transferFactory_transferImpl _ arg = runTransfer admin factoryInstrumentId eligibilityPolicyCid knownParticipants knownWallets arg
 
     choice ExecuteTransfer : TransferInstructionResult
       with
@@ -129,4 +141,4 @@ template HectXTransferFactory
         extraArgs : Api.Token.MetadataV1.ExtraArgs
       controller admin
       do
-        runTransfer admin factoryInstrumentId (TransferFactory_Transfer with expectedAdmin; transfer; extraArgs)
+        runTransfer admin factoryInstrumentId eligibilityPolicyCid knownParticipants knownWallets (TransferFactory_Transfer with expectedAdmin; transfer; extraArgs)

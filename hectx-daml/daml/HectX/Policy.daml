@@ -19,8 +19,6 @@ template EligibilityPolicy
     restrictedJurisdictions : TextMap.TextMap RestrictedRule
   where
     signatory eligibilityAdmin
-    key eligibilityAdmin : Party
-    maintainer key
 
 
 template FeeSchedule

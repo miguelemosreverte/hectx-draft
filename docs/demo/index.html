@@ -83,6 +83,7 @@
                 <span class="contract-tag">NAVSnapshot</span>
                 <span class="contract-tag">TransferFactory</span>
               </div>
+              <div class="step-result" id="result-setup"></div>
             </div>
           </div>
 
@@ -106,6 +107,7 @@
                 <span class="contract-tag">HectXHolding</span>
                 <span class="contract-tag">MintReceipt</span>
               </div>
+              <div class="step-result" id="result-mint"></div>
             </div>
           </div>
 
@@ -128,6 +130,7 @@
                 <span class="contract-tag">HectXHolding (receiver)</span>
                 <span class="contract-tag">HectXHolding (change)</span>
               </div>
+              <div class="step-result" id="result-transfer"></div>
             </div>
           </div>
 
@@ -141,7 +144,9 @@
               </div>
               <button class="btn btn-sm" data-action="verify">Run</button>
             </div>
-            <div class="step-detail" id="detail-verify"></div>
+            <div class="step-detail" id="detail-verify">
+              <div class="step-result" id="result-verify"></div>
+            </div>
           </div>
 
           <!-- Step 5: Rejection Scenario -->
@@ -162,6 +167,7 @@
                 <span class="contract-tag">ApproveMint</span>
                 <span class="contract-tag">EligibilityPolicy</span>
               </div>
+              <div class="step-result" id="result-rejection"></div>
             </div>
           </div>
         </div>
@@ -218,7 +224,7 @@
                 <div class="cc-row"><span class="cc-label">Wallet</span><span class="cc-val" id="val-bob-wallet">—</span></div>
               </div>
             </div>
-            <div class="compliance-card" id="card-charlie" style="display:none">
+            <div class="compliance-card dimmed" id="card-charlie">
               <div class="cc-header">
                 <span class="cc-icon">&#9632;</span>
                 <span class="cc-title">Charlie</span>

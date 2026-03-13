@@ -1,7 +1,5 @@
 module HectX.NAV where
 
-import DA.Time
-
 
 template NAVSnapshot
   with
@@ -14,8 +12,6 @@ template NAVSnapshot
     timestamp : Time
   where
     signatory navAdmin
-    key navAdmin : Party
-    maintainer key
 
 
 template Supply
@@ -24,5 +20,3 @@ template Supply
     totalSupply : Decimal
   where
     signatory supplyAdmin
-    key supplyAdmin : Party
-    maintainer key

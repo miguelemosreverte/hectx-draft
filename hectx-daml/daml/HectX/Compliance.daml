@@ -14,8 +14,6 @@ template Participant
   where
     signatory participantAdmin
     observer party, observers
-    key (participantAdmin, party) : (Party, Party)
-    maintainer key._1
 
     choice UpdateStatus : ContractId Participant
       with
@@ -25,7 +23,7 @@ template Participant
         create this with status = newStatus
 
 
--- Wallet approval is keyed by party. Party is treated as the wallet owner identity.
+-- Wallet approval record
 template WalletApproval
   with
     walletAdmin : Party
@@ -35,8 +33,6 @@ template WalletApproval
   where
     signatory walletAdmin
     observer owner, observers
-    key (walletAdmin, owner) : (Party, Party)
-    maintainer key._1
 
     choice SetActive : ContractId WalletApproval
       with

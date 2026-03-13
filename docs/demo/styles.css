@@ -175,6 +175,9 @@ body {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
+  min-width: 6ch;
+  display: inline-block;
+  text-align: right;
 }
 
 .kpi-label {
@@ -433,7 +436,7 @@ body {
 
 .step-result {
   margin-top: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0 0.75rem;
   background: var(--bg-base);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
@@ -441,8 +444,16 @@ body {
   color: var(--text-secondary);
   white-space: pre-wrap;
   word-break: break-all;
-  max-height: 120px;
-  overflow-y: auto;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.35s ease, opacity 0.35s ease, padding 0.35s ease;
+}
+
+.step-result.visible {
+  max-height: 80px;
+  opacity: 1;
+  padding: 0.5rem 0.75rem;
 }
 
 /* ─── Log ─── */
@@ -724,6 +735,22 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+
+/* ─── Layout Containment ─── */
+.step, .compliance-card, .kpi {
+  contain: layout style;
+}
+
+/* Charlie card: always in DOM, dimmed until revealed */
+.compliance-card.dimmed {
+  opacity: 0.3;
+  transition: opacity 0.4s ease;
+}
+
+.compliance-card.dimmed .status-dot {
+  background: var(--text-muted) !important;
+  box-shadow: none !important;
 }
 
 /* ─── Responsive ─── */

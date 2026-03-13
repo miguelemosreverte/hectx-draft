@@ -33,16 +33,20 @@ template MintRequest
       with
         registryCid : ContractId HectXRegistry
         marketPrice : Decimal
+        navSnapshotCid : ContractId NAVSnapshot
+        supplyCid : ContractId Supply
+        participantCid : ContractId Participant
+        walletApprovalCid : ContractId WalletApproval
       controller requestAdmin
       do
         now <- getTime
         reg <- fetch registryCid
         fee <- fetch reg.feeScheduleCid
         policy <- fetch reg.mintPolicyCid
-        (_, navSnap) <- fetchByKey @NAVSnapshot requestAdmin
-        (supplyCid, supply) <- fetchByKey @Supply requestAdmin
-        (_, investorP) <- fetchByKey @Participant (requestAdmin, investor)
-        (_, investorW) <- fetchByKey @WalletApproval (requestAdmin, investor)
+        navSnap <- fetch navSnapshotCid
+        supply <- fetch supplyCid
+        investorP <- fetch participantCid
+        investorW <- fetch walletApprovalCid
 
         eligPolicy <- fetch reg.eligibilityPolicyCid
         require "minting disabled" policy.mintingEnabled
