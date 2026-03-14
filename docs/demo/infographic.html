@@ -1,0 +1,1114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HECTX — 3D Infographic</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { display: ['Georgia', '"Times New Roman"', 'serif'] },
+          colors: {
+            cream: { DEFAULT: '#FAF7F2', dark: '#F0EBE3' },
+            navy: { DEFAULT: '#1C3553', light: '#2A4A6B' },
+            gold: { DEFAULT: '#C4963C', light: '#D4A94E' },
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    #scene-container { position: fixed; inset: 0; z-index: 0; }
+    #hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
+    #hud > * { pointer-events: auto; }
+    .step-pill.active { background-color: #1C3553; color: #fff; }
+    .step-pill.done   { background-color: #4A7C59; color: #fff; }
+    .step-pill.error  { background-color: #9B2335; color: #fff; }
+  </style>
+</head>
+<body class="overflow-hidden bg-cream" data-demo-phase="idle">
+
+  <!-- ─── HUD ─── -->
+  <div id="hud">
+    <!-- Top bar -->
+    <div class="absolute top-4 left-5 flex items-center gap-3">
+      <span class="bg-navy text-white px-2.5 py-1 rounded font-extrabold text-sm tracking-widest font-display">HX</span>
+      <span class="font-display text-lg font-bold text-stone-900">HECTX</span>
+      <span class="text-stone-300 mx-0.5">|</span>
+      <span class="text-stone-500 text-sm">3D Infographic</span>
+    </div>
+    <div class="absolute top-4 right-5 flex gap-2">
+      <a href="./" class="text-xs px-3 py-1.5 rounded-full bg-white/80 text-navy font-semibold no-underline hover:bg-white transition shadow-sm">Dashboard</a>
+      <span class="text-[10px] px-3 py-1.5 rounded-full bg-stone-100 text-stone-500 font-semibold">Canton Network</span>
+      <span class="text-[10px] px-3 py-1.5 rounded-full bg-stone-100 text-stone-500 font-semibold">Splice 0.5.14</span>
+      <span class="text-[10px] px-3 py-1.5 rounded-full bg-stone-100 text-stone-500 font-semibold">Daml 3.4.11</span>
+    </div>
+
+    <!-- KPI strip -->
+    <div class="absolute top-[56px] left-5 flex gap-3">
+      <div class="bg-white/90 backdrop-blur-md rounded-xl shadow-sm px-5 py-3 min-w-[110px] text-center border border-stone-100">
+        <div class="font-display text-xl font-bold text-stone-900 tabular-nums" id="kpi-supply">0</div>
+        <div class="text-[10px] text-stone-400 uppercase tracking-wider mt-0.5 font-semibold">Supply</div>
+      </div>
+      <div class="bg-white/90 backdrop-blur-md rounded-xl shadow-sm px-5 py-3 min-w-[110px] text-center border border-stone-100">
+        <div class="font-display text-xl font-bold text-stone-900 tabular-nums" id="kpi-nav">$1.0000</div>
+        <div class="text-[10px] text-stone-400 uppercase tracking-wider mt-0.5 font-semibold">NAV / Token</div>
+      </div>
+      <div class="bg-white/90 backdrop-blur-md rounded-xl shadow-sm px-5 py-3 min-w-[100px] text-center border border-stone-100">
+        <div class="font-display text-xl font-bold text-stone-900 tabular-nums" id="kpi-holders">0</div>
+        <div class="text-[10px] text-stone-400 uppercase tracking-wider mt-0.5 font-semibold">Holdings</div>
+      </div>
+      <div class="bg-white/90 backdrop-blur-md rounded-xl shadow-sm px-5 py-3 min-w-[100px] text-center border border-stone-100">
+        <div class="font-display text-xl font-bold text-stone-900 tabular-nums" id="kpi-investors">0</div>
+        <div class="text-[10px] text-stone-400 uppercase tracking-wider mt-0.5 font-semibold">Investors</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4">
+      <button id="btn-run" class="px-7 py-3 rounded-lg bg-navy text-white font-bold text-sm tracking-wide hover:bg-navy-light transition shadow-lg cursor-pointer font-display">
+        Run All Steps
+      </button>
+      <button id="btn-reset" class="px-5 py-3 rounded-lg bg-white text-stone-600 font-semibold text-sm hover:bg-stone-50 transition shadow-sm border border-stone-200 cursor-pointer">
+        Reset
+      </button>
+      <span id="hud-status" class="text-sm text-stone-400 ml-2 font-medium">Ready</span>
+    </div>
+
+    <!-- Step pills -->
+    <div class="absolute bottom-6 right-5 flex gap-1.5">
+      <div class="step-pill text-[11px] px-3 py-1.5 rounded-full bg-stone-100 text-stone-400 font-semibold transition-all" id="hs-setup">1 Setup</div>
+      <div class="step-pill text-[11px] px-3 py-1.5 rounded-full bg-stone-100 text-stone-400 font-semibold transition-all" id="hs-mint">2 Mint</div>
+      <div class="step-pill text-[11px] px-3 py-1.5 rounded-full bg-stone-100 text-stone-400 font-semibold transition-all" id="hs-transfer">3 Transfer</div>
+      <div class="step-pill text-[11px] px-3 py-1.5 rounded-full bg-stone-100 text-stone-400 font-semibold transition-all" id="hs-verify">4 Verify</div>
+      <div class="step-pill text-[11px] px-3 py-1.5 rounded-full bg-stone-100 text-stone-400 font-semibold transition-all" id="hs-rejection">5 Reject</div>
+    </div>
+  </div>
+
+  <div id="scene-container"></div>
+
+  <!-- Three.js core — UMD build, no ES modules, no SES issues -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+
+  <script>
+(function () {
+  'use strict';
+
+  /* ═══════════════════════════════════════
+     Constants
+     ═══════════════════════════════════════ */
+  var params = new URLSearchParams(location.search);
+  var isAutoplay = params.has('autoplay');
+  var stepDelay  = Number(params.get('delay')) || 800;
+
+  var INVESTORS = [
+    { name:'Alice',   jur:'Portugal',       amt:2000, p:false },
+    { name:'Sofia',   jur:'Portugal',       amt:800,  p:false },
+    { name:'Liam',    jur:'Ireland',        amt:1500, p:false },
+    { name:'Maeve',   jur:'Ireland',        amt:600,  p:false },
+    { name:'Felix',   jur:'Luxembourg',     amt:3000, p:false },
+    { name:'Marc',    jur:'Luxembourg',     amt:400,  p:false },
+    { name:'Wei',     jur:'Singapore',      amt:1200, p:false },
+    { name:'Mei',     jur:'Singapore',      amt:900,  p:false },
+    { name:'James',   jur:'Cayman Islands', amt:2500, p:false },
+    { name:'Diana',   jur:'Cayman Islands', amt:950,  p:false },
+    { name:'Hans',    jur:'Switzerland',    amt:1800, p:false },
+    { name:'Clara',   jur:'Switzerland',    amt:700,  p:false },
+    { name:'Erik',    jur:'Germany',        amt:1000, p:false },
+    { name:'Anna',    jur:'Germany',        amt:1100, p:false },
+    { name:'Oliver',  jur:'United Kingdom', amt:1600, p:false },
+    { name:'Emma',    jur:'United Kingdom', amt:500,  p:false },
+    { name:'Charlie', jur:'United States',  amt:500,  p:true  },
+    { name:'Dylan',   jur:'United States',  amt:750,  p:true  },
+    { name:'Kwang',   jur:'North Korea',    amt:1000, p:true  },
+    { name:'Jiyeon',  jur:'North Korea',    amt:300,  p:true  },
+  ];
+
+  var JURISDICTIONS = [
+    'Portugal','Ireland','Luxembourg','Singapore','Cayman Islands',
+    'Switzerland','Germany','United Kingdom','United States','North Korea',
+  ];
+
+  // Muted WSJ-warm palette
+  var JUR_HEX = {
+    'Portugal':       0x3B6CA8,
+    'Ireland':        0x4A7C59,
+    'Luxembourg':     0xC4963C,
+    'Singapore':      0x7B5EA7,
+    'Cayman Islands': 0x3D8B8B,
+    'Switzerland':    0x2A7D6E,
+    'Germany':        0xD4742C,
+    'United Kingdom': 0x5B6BA7,
+    'United States':  0xB83C3C,
+    'North Korea':    0x8B2D4B,
+  };
+
+  var ARC_MINT     = 0xC4963C; // warm gold
+  var ARC_TRANSFER = 0x3D8B8B; // teal
+  var ARC_REJECT   = 0xB83C3C; // muted red
+
+  var RING_RADIUS = 8;
+  var ORIGIN = new THREE.Vector3(0, 0, 0);
+
+  /* ═══════════════════════════════════════
+     Three.js Globals
+     ═══════════════════════════════════════ */
+  var scene, camera, renderer;
+  var ledger;
+  var discMap   = {};  // name -> { group, disc, mats }
+  var posMap    = {};  // name -> Vector3
+  var jurObjs   = {};  // jurisdiction -> { marker, label, totalLabel }
+  var barMap    = {};  // name -> { group, bar, mat }
+  var anims     = [];
+  var BAR_SCALE = 1 / 600; // 1 world-unit per 600 HECTX
+
+  // Transfer network
+  var transferLinks = [];
+
+  // Ground panels
+  var stepPanel = null;  // left: step explanation
+  var logPanel  = null;  // right: activity log
+  var logEntries = [];
+  var LOG_MAX = 18;
+
+  var STEP_INFO = {
+    idle:      { title: 'HECTX DEMO', lines: ['NAV-based tokenized fund', 'Canton Network · Splice 0.5.14', 'Daml smart contracts', '', 'Press Run All Steps to begin'] },
+    setup:     { title: '1 · INITIALIZE LEDGER', lines: ['20 parties across 10 jurisdictions', '', '7 on-ledger contracts:', 'EligibilityPolicy · FeeSchedule', 'MintPolicy · Registry · Supply', 'NAVSnapshot · TransferFactory'] },
+    mint:      { title: '2 · MINT HECTX TOKENS', lines: ['16 eligible investors mint tokens', '7 compliance checks per mint:', '', '· Minting enabled', '· KYC status = Eligible', '· Wallet active', '· Jurisdiction not prohibited', '· NAV freshness ≤ 3600s', '· Fees computed', '· Net amount > 0'] },
+    transfer:  { title: '3 · SPLICE TRANSFER', lines: ['8 cross-party transfers via', 'Splice TransferFactory interface', '', 'Both sender & receiver checked', 'Atomic: input archived,', 'new holdings created'] },
+    verify:    { title: '4 · VERIFY STATE', lines: ['Query ledger for all balances', 'Confirm supply invariant'] },
+    rejection: { title: '5 · COMPLIANCE REJECTION', lines: ['4 investors from prohibited', 'jurisdictions attempt to mint', '', 'United States · North Korea', '', 'All blocked by EligibilityPolicy', 'on-ledger enforcement'] },
+  };
+
+  /* Camera orbit state */
+  var orb = { theta: Math.PI / 2, phi: 0.12, r: 30 };
+  var drag = false, dx = 0, dy = 0;
+
+  /* ═══════════════════════════════════════
+     State
+     ═══════════════════════════════════════ */
+  var S = {
+    phase: 'idle', supply: 0, navPerToken: 1, investors: 0,
+    holdings: {}, approved: 0, rejected: 0,
+  };
+
+  /* ═══════════════════════════════════════
+     Init
+     ═══════════════════════════════════════ */
+  function boot() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xFAF7F2);
+    scene.fog = new THREE.FogExp2(0xFAF7F2, 0.006);
+
+    camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 200);
+    camUpdate();
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    document.getElementById('scene-container').appendChild(renderer.domElement);
+
+    // Warm lighting
+    scene.add(new THREE.AmbientLight(0xFFF8F0, 0.55));
+    var sun = new THREE.DirectionalLight(0xFFF5E6, 1.2);
+    sun.position.set(12, 24, 10);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.near = 1;  sun.shadow.camera.far = 60;
+    sun.shadow.camera.left = -22; sun.shadow.camera.right = 22;
+    sun.shadow.camera.top = 22;  sun.shadow.camera.bottom = -22;
+    sun.shadow.bias = -0.001;
+    scene.add(sun);
+    var fill = new THREE.DirectionalLight(0xC8D8F0, 0.25);
+    fill.position.set(-10, 8, -8);
+    scene.add(fill);
+
+    buildGround();
+    buildLedger();
+    computePos();
+    buildDiscs();
+    buildBars();
+    buildStepPanel();
+    buildLogPanel();
+    bindOrbit();
+
+    addEventListener('resize', function () {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    // Buttons
+    document.getElementById('btn-run').addEventListener('click', runAll);
+    document.getElementById('btn-reset').addEventListener('click', reset);
+
+    if (isAutoplay) setTimeout(function () {
+      fetch('/api/reset', { method: 'POST' }).catch(function(){});
+      runAll();
+    }, 500);
+
+    loop();
+  }
+
+  /* ═══════════════════════════════════════
+     Camera
+     ═══════════════════════════════════════ */
+  function camUpdate() {
+    camera.position.x = orb.r * Math.sin(orb.phi) * Math.cos(orb.theta);
+    camera.position.y = orb.r * Math.cos(orb.phi);
+    camera.position.z = orb.r * Math.sin(orb.phi) * Math.sin(orb.theta);
+    camera.lookAt(0, 0, 0);
+  }
+
+  function bindOrbit() {
+    var cvs = renderer.domElement;
+    cvs.addEventListener('pointerdown', function (e) { drag = true; dx = e.clientX; dy = e.clientY; });
+    addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      orb.theta -= (e.clientX - dx) * 0.004;
+      orb.phi = Math.max(0.3, Math.min(1.45, orb.phi - (e.clientY - dy) * 0.004));
+      dx = e.clientX; dy = e.clientY;
+    });
+    addEventListener('pointerup', function () { drag = false; });
+    cvs.addEventListener('wheel', function (e) {
+      orb.r = Math.max(12, Math.min(45, orb.r + e.deltaY * 0.03));
+      e.preventDefault();
+    }, { passive: false });
+  }
+
+  /* ═══════════════════════════════════════
+     Scene Objects
+     ═══════════════════════════════════════ */
+  function buildGround() {
+    var geo = new THREE.PlaneGeometry(80, 80);
+    var mat = new THREE.MeshStandardMaterial({ color: 0xF0EBE3, roughness: 0.95, metalness: 0 });
+    var plane = new THREE.Mesh(geo, mat);
+    plane.rotation.x = -Math.PI / 2;
+    plane.receiveShadow = true;
+    scene.add(plane);
+    var grid = new THREE.GridHelper(60, 40, 0xE0D9CF, 0xE8E2DA);
+    grid.position.y = 0.005;
+    scene.add(grid);
+  }
+
+  function buildLedger() {
+    var geo = new THREE.CylinderGeometry(1.6, 1.6, 0.5, 6);
+    var mat = new THREE.MeshStandardMaterial({ color: 0x1C3553, roughness: 0.25, metalness: 0.6 });
+    ledger = new THREE.Mesh(geo, mat);
+    ledger.position.y = 0.25;
+    ledger.castShadow = true;
+    scene.add(ledger);
+
+    // "HECTX" flat on top of prism
+    var lbl = textPlane('HECTX', { size: 60, color: '#FFFFFF', weight: '800' });
+    lbl.position.set(0, 0.52, 0);
+    scene.add(lbl);
+  }
+
+  /** Canvas-textured plane lying flat on the ground */
+  function textPlane(text, opts) {
+    var sz    = (opts && opts.size)   || 36;
+    var col   = (opts && opts.color)  || '#3A3530';
+    var wt    = (opts && opts.weight) || '700';
+    var fam   = 'Georgia, serif';
+
+    var c   = document.createElement('canvas');
+    var ctx = c.getContext('2d');
+    var font = wt + ' ' + sz + 'px ' + fam;
+    ctx.font = font;
+    var m = ctx.measureText(text);
+    c.width  = Math.ceil(m.width) + 24;
+    c.height = Math.ceil(sz * 1.4);
+    ctx.font = font;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = col;
+    ctx.fillText(text, c.width / 2, c.height / 2);
+
+    var tex = new THREE.CanvasTexture(c);
+    tex.minFilter = THREE.LinearFilter;
+    var aspect = c.width / c.height;
+    var h = sz / 55;
+    var geo = new THREE.PlaneGeometry(h * aspect, h);
+    var mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    return mesh;
+  }
+
+  function computePos() {
+    JURISDICTIONS.forEach(function (jur, i) {
+      var angle = (i / JURISDICTIONS.length) * Math.PI * 2 - Math.PI / 2;
+      var cx = RING_RADIUS * Math.cos(angle);
+      var cz = RING_RADIUS * Math.sin(angle);
+      var invs = INVESTORS.filter(function (v) { return v.jur === jur; });
+
+      invs.forEach(function (inv, j) {
+        var off = (j - (invs.length - 1) / 2) * 1.4;
+        var perp = angle + Math.PI / 2;
+        posMap[inv.name] = new THREE.Vector3(
+          cx + off * Math.cos(perp), 0.1, cz + off * Math.sin(perp)
+        );
+      });
+
+      // Ground marker circle
+      var mGeo = new THREE.CircleGeometry(2, 32);
+      var mMat = new THREE.MeshBasicMaterial({ color: JUR_HEX[jur], transparent: true, opacity: 0, side: THREE.DoubleSide });
+      var marker = new THREE.Mesh(mGeo, mMat);
+      marker.rotation.x = -Math.PI / 2;
+      marker.position.set(cx, 0.008, cz);
+      scene.add(marker);
+
+      // Jurisdiction label (flat on ground, dark text)
+      var lbl = textPlane(jur.toUpperCase(), { size: 28, color: '#5C5650', weight: '700' });
+      lbl.position.set(cx, 0.015, cz + 2.2);
+      lbl.visible = false;
+      scene.add(lbl);
+
+      jurObjs[jur] = { marker: marker, label: lbl };
+    });
+  }
+
+  function discTexture(initial, hex) {
+    var c = document.createElement('canvas');
+    c.width = 128; c.height = 128;
+    var ctx = c.getContext('2d');
+    ctx.beginPath();
+    ctx.arc(64, 64, 60, 0, Math.PI * 2);
+    ctx.fillStyle = '#' + hex.toString(16).padStart(6, '0');
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 50px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(initial, 64, 66);
+    var tex = new THREE.CanvasTexture(c);
+    tex.encoding = THREE.sRGBEncoding;
+    return tex;
+  }
+
+  function buildDiscs() {
+    INVESTORS.forEach(function (inv) {
+      var hex = JUR_HEX[inv.jur] || 0x888888;
+      var pos = posMap[inv.name];
+      if (!pos) return;
+
+      var group = new THREE.Group();
+      group.position.copy(pos);
+
+      var geo = new THREE.CylinderGeometry(0.52, 0.52, 0.14, 32);
+      var tex = discTexture(inv.name[0], hex);
+      var mats = [
+        new THREE.MeshStandardMaterial({ color: hex, roughness: 0.35, metalness: 0.25 }),
+        new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5 }),
+        new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 }),
+      ];
+      var disc = new THREE.Mesh(geo, mats);
+      disc.castShadow = true;
+      group.add(disc);
+
+      // Name label flat on ground under disc
+      var lbl = textPlane(inv.name, { size: 24, color: '#6B6560', weight: '600' });
+      lbl.position.set(0, -0.06, 0.85);
+      group.add(lbl);
+
+      group.scale.set(0, 0, 0);
+      group.visible = false;
+      scene.add(group);
+
+      discMap[inv.name] = { group: group, disc: disc, mats: mats };
+    });
+  }
+
+  /* ═══════════════════════════════════════
+     Holdings Bars (vertical 3D bars per investor)
+     ═══════════════════════════════════════ */
+  function buildBars() {
+    INVESTORS.forEach(function (inv) {
+      var pos = posMap[inv.name];
+      if (!pos) return;
+      var hex = JUR_HEX[inv.jur] || 0x888888;
+
+      // Place bar radially outward from disc
+      var dir = new THREE.Vector3(pos.x, 0, pos.z).normalize();
+      var barX = pos.x + dir.x * 0.85;
+      var barZ = pos.z + dir.z * 0.85;
+
+      var group = new THREE.Group();
+      group.position.set(barX, 0, barZ);
+
+      // Unit-height cylinder, scaled on Y
+      var geo = new THREE.CylinderGeometry(0.1, 0.1, 1, 12);
+      var mat = new THREE.MeshStandardMaterial({ color: hex, transparent: true, opacity: 0.85, roughness: 0.3, metalness: 0.2 });
+      var bar = new THREE.Mesh(geo, mat);
+      bar.scale.y = 0.001;
+      bar.position.y = 0;
+      bar.castShadow = true;
+      group.add(bar);
+
+      group.visible = false;
+      scene.add(group);
+      barMap[inv.name] = { group: group, bar: bar, mat: mat };
+    });
+  }
+
+  function updateBar(name, balance) {
+    var b = barMap[name]; if (!b) return;
+    b.group.visible = true;
+    var target = Math.max(0.01, balance * BAR_SCALE);
+    var cur = b.bar.scale.y;
+    addAnim(350, function (t) {
+      var h = cur + (target - cur) * t;
+      b.bar.scale.y = h;
+      b.bar.position.y = h / 2;
+    });
+  }
+
+  function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+
+  /* ═══════════════════════════════════════
+     Compliance Check Cascade (expanding rings per check)
+     ═══════════════════════════════════════ */
+  function showComplianceChecks(name, passed) {
+    var m = discMap[name]; if (!m) return;
+    var total = passed ? 7 : 4;
+
+    for (var i = 0; i < total; i++) {
+      (function (idx) {
+        var isPass = passed || idx < 3;
+        var hex = isPass ? 0x4A7C59 : 0xB83C3C;
+
+        setTimeout(function () {
+          var geo = new THREE.RingGeometry(0.55, 0.62, 32);
+          var mat = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+          var ring = new THREE.Mesh(geo, mat);
+          ring.rotation.x = -Math.PI / 2;
+          ring.position.y = 0.12;
+          m.group.add(ring);
+
+          addAnim(900, function (t) {
+            var s = 1 + t * (1.2 + idx * 0.3);
+            ring.scale.set(s, s, s);
+            mat.opacity = 0.7 * (1 - t);
+          }, function () {
+            m.group.remove(ring);
+            geo.dispose(); mat.dispose();
+          });
+        }, idx * 120);
+      })(i);
+    }
+  }
+
+  /* ═══════════════════════════════════════
+     Transfer Network Links (persistent ground connections)
+     ═══════════════════════════════════════ */
+  function addTransferLink(fromName, toName) {
+    var fp = posMap[fromName], tp = posMap[toName];
+    if (!fp || !tp) return;
+
+    var start = new THREE.Vector3(fp.x, 0.025, fp.z);
+    var end   = new THREE.Vector3(tp.x, 0.025, tp.z);
+    var curve = new THREE.LineCurve3(start, end);
+
+    var geo = new THREE.TubeGeometry(curve, 1, 0.02, 6, false);
+    var mat = new THREE.MeshBasicMaterial({ color: 0x3D8B8B, transparent: true, opacity: 0 });
+    var tube = new THREE.Mesh(geo, mat);
+    scene.add(tube);
+
+    transferLinks.push({ mesh: tube, geo: geo, mat: mat });
+    addAnim(800, function (t) { mat.opacity = t * 0.25; });
+  }
+
+  /* ═══════════════════════════════════════
+     Jurisdiction Totals (updated on ground labels)
+     ═══════════════════════════════════════ */
+  function updateJurTotals() {
+    JURISDICTIONS.forEach(function (jur) {
+      var o = jurObjs[jur]; if (!o) return;
+      var total = 0;
+      INVESTORS.filter(function(v){return v.jur===jur;}).forEach(function(inv) {
+        total += (S.holdings[inv.name] || 0);
+      });
+      // Remove old total label if exists
+      if (o.totalLabel) { scene.remove(o.totalLabel); o.totalLabel.geometry.dispose(); o.totalLabel.material.dispose(); }
+      if (total > 0) {
+        var lbl = textPlane(fmt(total) + ' HECTX', { size: 22, color: '#1C3553', weight: '700' });
+        var angle = JURISDICTIONS.indexOf(jur);
+        var a = (angle / JURISDICTIONS.length) * Math.PI * 2 - Math.PI / 2;
+        var cx = RING_RADIUS * Math.cos(a);
+        var cz = RING_RADIUS * Math.sin(a);
+        lbl.position.set(cx, 0.015, cz + 2.9);
+        scene.add(lbl);
+        o.totalLabel = lbl;
+      }
+    });
+  }
+
+  /* ═══════════════════════════════════════
+     Ground Panels (step info + log)
+     ═══════════════════════════════════════ */
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+  }
+
+  function buildStepPanel() {
+    var canvas = document.createElement('canvas');
+    canvas.width = 840; canvas.height = 1080;
+    var texture = new THREE.CanvasTexture(canvas);
+    texture.minFilter = THREE.LinearFilter;
+    var geo = new THREE.PlaneGeometry(14, 18);
+    var mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(-17, 0.02, 0);
+    scene.add(mesh);
+    stepPanel = { mesh: mesh, canvas: canvas, ctx: canvas.getContext('2d'), texture: texture };
+    setStepInfo('idle');
+  }
+
+  function renderStepPanel(title, lines) {
+    if (!stepPanel) return;
+    var ctx = stepPanel.ctx, w = stepPanel.canvas.width, h = stepPanel.canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    ctx.fillStyle = 'rgba(28, 53, 83, 0.65)';
+    roundRect(ctx, 0, 0, w, h, 24); ctx.fill();
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '800 52px Georgia, serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(title, 48, 80);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(48, 105); ctx.lineTo(w - 48, 105); ctx.stroke();
+
+    ctx.font = '600 34px -apple-system, Helvetica, sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    var y = 160;
+    lines.forEach(function (line) {
+      if (line === '') { y += 20; return; }
+      ctx.fillText(line, 48, y);
+      y += 52;
+    });
+
+    stepPanel.texture.needsUpdate = true;
+  }
+
+  function setStepInfo(key) {
+    var info = STEP_INFO[key];
+    if (info) renderStepPanel(info.title, info.lines);
+  }
+
+  function buildLogPanel() {
+    var canvas = document.createElement('canvas');
+    canvas.width = 760; canvas.height = 1080;
+    var texture = new THREE.CanvasTexture(canvas);
+    texture.minFilter = THREE.LinearFilter;
+    var geo = new THREE.PlaneGeometry(12.6, 18);
+    var mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(17, 0.02, 0);
+    scene.add(mesh);
+    logPanel = { mesh: mesh, canvas: canvas, ctx: canvas.getContext('2d'), texture: texture };
+    renderLogPanel();
+  }
+
+  function renderLogPanel() {
+    if (!logPanel) return;
+    var ctx = logPanel.ctx, w = logPanel.canvas.width, h = logPanel.canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    ctx.fillStyle = 'rgba(28, 53, 83, 0.55)';
+    roundRect(ctx, 0, 0, w, h, 24); ctx.fill();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = '800 40px Georgia, serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('TRANSACTION LOG', 36, 60);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(36, 80); ctx.lineTo(w - 36, 80); ctx.stroke();
+
+    ctx.font = '500 26px Menlo, Monaco, monospace';
+    var y = 120;
+    var visible = logEntries.slice(-LOG_MAX);
+    visible.forEach(function (entry) {
+      ctx.fillStyle = entry.color;
+      ctx.fillText(entry.text, 36, y);
+      y += 52;
+    });
+
+    logPanel.texture.needsUpdate = true;
+  }
+
+  function addLog(text, color) {
+    logEntries.push({ text: text, color: color || 'rgba(255,255,255,0.85)' });
+    renderLogPanel();
+  }
+
+  /* ═══════════════════════════════════════
+     Animation System
+     ═══════════════════════════════════════ */
+  function addAnim(dur, fn, done) {
+    anims.push({ t0: performance.now(), dur: dur, fn: fn, done: done || null });
+  }
+  function tickAnims() {
+    var now = performance.now();
+    for (var i = anims.length - 1; i >= 0; i--) {
+      var a = anims[i];
+      var p = Math.min((now - a.t0) / a.dur, 1);
+      a.fn(p);
+      if (p >= 1) { if (a.done) a.done(); anims.splice(i, 1); }
+    }
+  }
+  function easeOutBack(t) {
+    var c = 1.70158;
+    return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2);
+  }
+  function easeIO(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  /* ── Effects ── */
+
+  function materialize(name) {
+    var m = discMap[name]; if (!m) return;
+    m.group.visible = true;
+    addAnim(600, function (t) { var s = easeOutBack(t); m.group.scale.set(s, s, s); });
+  }
+
+  function showJur(jur) {
+    var o = jurObjs[jur]; if (!o) return;
+    if (!o.label.visible) o.label.visible = true;
+    if (o.marker.material.opacity < 0.02) {
+      addAnim(400, function (t) { o.marker.material.opacity = t * 0.12; });
+    }
+  }
+
+  function pulseLedger(hex) {
+    ledger.material.emissive = new THREE.Color(hex);
+    ledger.material.emissiveIntensity = 0.5;
+    addAnim(600, function (t) {
+      ledger.material.emissiveIntensity = 0.5 * (1 - t);
+    }, function () {
+      ledger.material.emissive = new THREE.Color(0);
+      ledger.material.emissiveIntensity = 0;
+    });
+  }
+
+  function pulseDisc(name, hex) {
+    var m = discMap[name]; if (!m) return;
+    m.mats[0].emissive = new THREE.Color(hex);
+    m.mats[0].emissiveIntensity = 0.6;
+    addAnim(600, function (t) { m.mats[0].emissiveIntensity = 0.6 * (1 - t); },
+      function () { m.mats[0].emissive = new THREE.Color(0); m.mats[0].emissiveIntensity = 0; });
+  }
+
+  /** Fire a thick, visible arc (TubeGeometry + glowing sphere) */
+  function fireArc(fromPos, toPos, hex, duration) {
+    duration = duration || 1000;
+    var start = fromPos.clone(); start.y = 0.6;
+    var end   = toPos.clone();   end.y   = 0.6;
+    var mid   = new THREE.Vector3().lerpVectors(start, end, 0.5);
+    mid.y = 4.5 + start.distanceTo(end) * 0.22;
+
+    var curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+
+    // Thick tube
+    var tubeGeo = new THREE.TubeGeometry(curve, 48, 0.06, 8, false);
+    var tubeMat = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.9 });
+    var tube    = new THREE.Mesh(tubeGeo, tubeMat);
+    scene.add(tube);
+
+    // Leading sphere
+    var sGeo = new THREE.SphereGeometry(0.22, 16, 16);
+    var sMat = new THREE.MeshBasicMaterial({ color: hex });
+    var sphere = new THREE.Mesh(sGeo, sMat);
+    scene.add(sphere);
+
+    // Outer glow
+    var gGeo = new THREE.SphereGeometry(0.45, 16, 16);
+    var gMat = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.18 });
+    var glow = new THREE.Mesh(gGeo, gMat);
+    scene.add(glow);
+
+    addAnim(duration, function (t) {
+      var e = easeIO(t);
+      var p = curve.getPoint(e);
+      sphere.position.copy(p);
+      glow.position.copy(p);
+    }, function () {
+      scene.remove(sphere, glow);
+      sGeo.dispose(); sMat.dispose();
+      gGeo.dispose(); gMat.dispose();
+      // Fade tube trail
+      addAnim(1200, function (t) {
+        tubeMat.opacity = 0.9 * (1 - t);
+      }, function () {
+        scene.remove(tube);
+        tubeGeo.dispose(); tubeMat.dispose();
+      });
+    });
+  }
+
+  /** Rejection arc: travels ~40% toward center, then bounces back */
+  function fireArcReject(fromPos, hex, duration) {
+    duration = duration || 1200;
+    var start = fromPos.clone(); start.y = 0.6;
+    var end   = ORIGIN.clone();  end.y   = 0.6;
+    var mid   = new THREE.Vector3().lerpVectors(start, end, 0.5);
+    mid.y = 4.5 + start.distanceTo(end) * 0.22;
+
+    var curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+
+    // Leading sphere
+    var sGeo = new THREE.SphereGeometry(0.22, 16, 16);
+    var sMat = new THREE.MeshBasicMaterial({ color: hex });
+    var sphere = new THREE.Mesh(sGeo, sMat);
+    scene.add(sphere);
+
+    // Outer glow
+    var gGeo = new THREE.SphereGeometry(0.45, 16, 16);
+    var gMat = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.18 });
+    var glow = new THREE.Mesh(gGeo, gMat);
+    scene.add(glow);
+
+    addAnim(duration, function (t) {
+      // Go to 40% of curve at t=0.35, then reverse back to start
+      var progress;
+      if (t < 0.35) {
+        progress = easeIO(t / 0.35) * 0.4;
+      } else {
+        progress = 0.4 * (1 - easeIO((t - 0.35) / 0.65));
+      }
+      var p = curve.getPoint(progress);
+      sphere.position.copy(p);
+      glow.position.copy(p);
+      // Fade red as it bounces back
+      if (t > 0.35) sMat.color.lerp(new THREE.Color(0x440000), 0.03);
+    }, function () {
+      scene.remove(sphere, glow);
+      sGeo.dispose(); sMat.dispose();
+      gGeo.dispose(); gMat.dispose();
+    });
+  }
+
+  function rejectDisc(name) {
+    var m = discMap[name]; if (!m) return;
+    m.mats[0].color.set(0xB83C3C);
+    m.mats[0].emissive = new THREE.Color(0x440000);
+    m.mats[0].emissiveIntensity = 0.35;
+    var ox = m.group.position.x;
+    addAnim(500, function (t) {
+      m.group.position.x = ox + Math.sin(t * Math.PI * 8) * 0.14 * (1 - t);
+    }, function () { m.group.position.x = ox; });
+
+    // Flat "BLOCKED" label
+    var bl = textPlane('BLOCKED', { size: 28, color: '#B83C3C', weight: '800' });
+    bl.position.set(0, 0.9, 0);
+    bl.rotation.x = 0; // face camera instead of ground for this one
+    m.group.add(bl);
+  }
+
+  /* ═══════════════════════════════════════
+     HUD
+     ═══════════════════════════════════════ */
+  function qsel(s) { return document.querySelector(s); }
+  function updateKPIs() {
+    qsel('#kpi-supply').textContent   = S.supply.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    qsel('#kpi-nav').textContent      = '$' + S.navPerToken.toFixed(4);
+    qsel('#kpi-holders').textContent  = Object.values(S.holdings).filter(function (v) { return v > 0; }).length;
+    qsel('#kpi-investors').textContent = S.investors;
+  }
+  function setStatus(t) { qsel('#hud-status').textContent = t; }
+  function markStep(id, cls) {
+    var el = qsel('#hs-' + id); if (!el) return;
+    el.classList.remove('active', 'done', 'error');
+    if (cls) el.classList.add(cls);
+  }
+
+  /* ═══════════════════════════════════════
+     SSE / API
+     ═══════════════════════════════════════ */
+  function streamStep(path, onProgress) {
+    return new Promise(function (resolve, reject) {
+      var es = new EventSource(path);
+      es.addEventListener('progress', function (e) { try { onProgress(JSON.parse(e.data)); } catch(_){} });
+      es.addEventListener('complete', function (e) { es.close(); try { resolve(JSON.parse(e.data)); } catch(_){ resolve({}); } });
+      es.addEventListener('error', function () { es.close(); reject(new Error('SSE error')); });
+    });
+  }
+  function apiCall(path, method) {
+    return fetch(path, { method: method || 'POST', headers: { 'Content-Type': 'application/json' } })
+      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status); return d; }); });
+  }
+
+  /* ═══════════════════════════════════════
+     Progress Handler
+     ═══════════════════════════════════════ */
+  function handleProgress(data) {
+    switch (data.type) {
+      case 'party_allocated':
+        materialize(data.investor);
+        if (data.jurisdiction) showJur(data.jurisdiction);
+        addLog(data.investor + ' (' + data.jurisdiction + ')');
+        break;
+      case 'contract_created':
+        addLog('Contract: ' + (data.contract || '?'), 'rgba(220,230,255,0.9)');
+        break;
+      case 'participant_created':
+        addLog('KYC: ' + data.investor + ' = Eligible', 'rgba(255,255,255,0.65)');
+        break;
+      case 'wallet_created':
+        addLog('Wallet: ' + data.investor + ' active', 'rgba(255,255,255,0.65)');
+        break;
+      case 'mint_approved':
+        var mp = posMap[data.investor];
+        if (mp) { fireArc(mp, ORIGIN, ARC_MINT, 900); pulseDisc(data.investor, ARC_MINT); pulseLedger(ARC_MINT); }
+        S.holdings[data.investor] = (S.holdings[data.investor] || 0) + (data.amount || 0);
+        S.supply += (data.amount || 0);
+        S.approved++; S.investors++;
+        updateKPIs();
+        updateBar(data.investor, S.holdings[data.investor]);
+        updateJurTotals();
+        showComplianceChecks(data.investor, true);
+        addLog('Minted: ' + data.investor + ' ' + fmt(data.amount), 'rgba(140,220,160,0.95)');
+        break;
+      case 'party_registered':
+        addLog('Registered: ' + data.investor, 'rgba(255,255,255,0.65)');
+        break;
+      case 'transfer_executed':
+        var fp = posMap[data.from], tp = posMap[data.to];
+        if (fp && tp) { fireArc(fp, tp, ARC_TRANSFER, 1000); pulseDisc(data.from, ARC_TRANSFER); pulseDisc(data.to, ARC_TRANSFER); }
+        S.holdings[data.from] = (S.holdings[data.from] || 0) - (data.amount || 0);
+        S.holdings[data.to]   = (S.holdings[data.to]   || 0) + (data.amount || 0);
+        updateKPIs();
+        updateBar(data.from, S.holdings[data.from]);
+        updateBar(data.to, S.holdings[data.to]);
+        updateJurTotals();
+        addTransferLink(data.from, data.to);
+        addLog(data.from + ' > ' + data.to + ': ' + fmt(data.amount), 'rgba(120,220,220,0.95)');
+        break;
+      case 'mint_blocked':
+        var rp = posMap[data.investor];
+        if (rp) { fireArcReject(rp, ARC_REJECT, 1200); rejectDisc(data.investor); }
+        S.rejected++;
+        updateKPIs();
+        showComplianceChecks(data.investor, false);
+        addLog('BLOCKED: ' + data.investor + ' (' + (data.jurisdiction || '') + ')', 'rgba(255,120,120,0.95)');
+        break;
+    }
+  }
+
+  /* ═══════════════════════════════════════
+     Workflow
+     ═══════════════════════════════════════ */
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function runSetup() {
+    markStep('setup', 'active');
+    setStepInfo('setup');
+    setStatus('Allocating 20 parties across 10 jurisdictions...');
+    return streamStep('/api/setup/stream', handleProgress)
+      .catch(function () {
+        return apiCall('/api/setup').then(function (r) {
+          INVESTORS.forEach(function (inv, i) {
+            setTimeout(function () { materialize(inv.name); showJur(inv.jur); }, i * 40);
+          });
+          return r;
+        });
+      })
+      .then(function () { markStep('setup', 'done'); setStatus('Ledger initialized'); return true; })
+      .catch(function (e) { markStep('setup', 'error'); setStatus('Setup failed: ' + e.message); return false; });
+  }
+
+  function runMint() {
+    markStep('mint', 'active');
+    setStepInfo('mint');
+    setStatus('Minting HECTX for 16 eligible investors...');
+    return streamStep('/api/mint/stream', handleProgress)
+      .catch(function () {
+        return apiCall('/api/mint').then(function (r) {
+          INVESTORS.filter(function(v){return !v.p;}).forEach(function (inv, i) {
+            setTimeout(function () { handleProgress({ type: 'mint_approved', investor: inv.name, amount: inv.amt }); }, i * 60);
+          });
+          return r;
+        });
+      })
+      .then(function () { markStep('mint', 'done'); setStatus(S.approved + ' mints completed'); return true; })
+      .catch(function (e) { markStep('mint', 'error'); setStatus('Mint failed: ' + e.message); return false; });
+  }
+
+  function runTransfer() {
+    markStep('transfer', 'active');
+    setStepInfo('transfer');
+    setStatus('Executing 8 transfers via Splice TransferFactory...');
+    var TXS = [
+      {from:'Alice',to:'Liam',amount:200},{from:'Felix',to:'Hans',amount:500},
+      {from:'Wei',to:'Oliver',amount:150},{from:'James',to:'Erik',amount:300},
+      {from:'Liam',to:'Sofia',amount:100},{from:'Clara',to:'Emma',amount:200},
+      {from:'Anna',to:'Mei',amount:150},{from:'Hans',to:'Alice',amount:250},
+    ];
+    return streamStep('/api/transfer/stream', handleProgress)
+      .catch(function () {
+        return apiCall('/api/transfer').then(function (r) {
+          TXS.forEach(function (tx, i) {
+            setTimeout(function () { handleProgress({ type: 'transfer_executed', from: tx.from, to: tx.to, amount: tx.amount }); }, i * 60);
+          });
+          return r;
+        });
+      })
+      .then(function () { markStep('transfer', 'done'); setStatus('8 transfers completed'); return true; })
+      .catch(function (e) { markStep('transfer', 'error'); setStatus('Transfer failed: ' + e.message); return false; });
+  }
+
+  function runVerify() {
+    markStep('verify', 'active');
+    setStepInfo('verify');
+    setStatus('Verifying final state...');
+    return apiCall('/api/status', 'GET')
+      .then(function () { markStep('verify', 'done'); setStatus('State verified'); return true; })
+      .catch(function (e) { markStep('verify', 'error'); setStatus('Verify failed: ' + e.message); return false; });
+  }
+
+  function runRejection() {
+    markStep('rejection', 'active');
+    setStepInfo('rejection');
+    setStatus('4 prohibited investors attempting to mint...');
+    return streamStep('/api/rejection/stream', handleProgress)
+      .catch(function () {
+        return apiCall('/api/rejection').then(function (r) {
+          var prohibited = INVESTORS.filter(function(v){return v.p;});
+          prohibited.forEach(function (inv, i) {
+            setTimeout(function () {
+              materialize(inv.name); showJur(inv.jur);
+              setTimeout(function () { handleProgress({ type: 'mint_blocked', investor: inv.name, jurisdiction: inv.jur }); }, 200);
+            }, i * 500);
+          });
+          return r;
+        });
+      })
+      .then(function () { markStep('rejection', 'error'); setStatus(S.rejected + ' mints blocked'); return true; })
+      .catch(function (e) { markStep('rejection', 'error'); setStatus('Error: ' + e.message); return false; });
+  }
+
+  function runAll() {
+    if (S.phase === 'running') return;
+    S.phase = 'running';
+    document.body.setAttribute('data-demo-phase', 'running');
+    var btn = qsel('#btn-run');
+    btn.disabled = true; btn.textContent = 'Running...';
+
+    runSetup()
+      .then(function (ok) { if (!ok) throw 0; return wait(stepDelay); })
+      .then(function () { return runMint(); })
+      .then(function (ok) { if (!ok) throw 0; return wait(stepDelay); })
+      .then(function () { return runTransfer(); })
+      .then(function (ok) { if (!ok) throw 0; return wait(stepDelay); })
+      .then(function () { return runVerify(); })
+      .then(function (ok) { if (!ok) throw 0; return wait(stepDelay); })
+      .then(function () { return runRejection(); })
+      .then(function () {
+        S.phase = 'done';
+        document.body.setAttribute('data-demo-phase', 'done');
+        btn.textContent = 'Complete';
+        setStatus('Full demo complete');
+      })
+      .catch(function () {
+        S.phase = 'idle';
+        document.body.setAttribute('data-demo-phase', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Run All Steps';
+      });
+  }
+
+  function reset() {
+    fetch('/api/reset', { method: 'POST' }).catch(function(){});
+    S.phase = 'idle'; S.supply = 0; S.navPerToken = 1; S.investors = 0;
+    S.holdings = {}; S.approved = 0; S.rejected = 0;
+    document.body.setAttribute('data-demo-phase', 'idle');
+    var btn = qsel('#btn-run'); btn.disabled = false; btn.textContent = 'Run All Steps';
+    setStatus('Ready');
+    ['setup','mint','transfer','verify','rejection'].forEach(function (s) { markStep(s, null); });
+    updateKPIs();
+
+    // Remove disc groups
+    Object.keys(discMap).forEach(function (name) {
+      var m = discMap[name];
+      scene.remove(m.group);
+      m.disc.geometry.dispose();
+      m.mats.forEach(function (mat) { mat.dispose(); });
+      delete discMap[name];
+    });
+    // Remove bar groups
+    Object.keys(barMap).forEach(function (name) {
+      var b = barMap[name];
+      scene.remove(b.group);
+      b.bar.geometry.dispose();
+      b.mat.dispose();
+      delete barMap[name];
+    });
+    // Remove jurisdiction total labels
+    Object.keys(jurObjs).forEach(function (jur) {
+      var o = jurObjs[jur];
+      if (o.totalLabel) { scene.remove(o.totalLabel); o.totalLabel.geometry.dispose(); o.totalLabel.material.dispose(); o.totalLabel = null; }
+    });
+    // Remove transfer links
+    transferLinks.forEach(function (l) {
+      scene.remove(l.mesh); l.geo.dispose(); l.mat.dispose();
+    });
+    transferLinks = [];
+    // Reset jurisdiction visuals
+    Object.keys(jurObjs).forEach(function (jur) {
+      jurObjs[jur].label.visible = false;
+      jurObjs[jur].marker.material.opacity = 0;
+    });
+    // Reset ledger
+    ledger.material.emissive = new THREE.Color(0);
+    ledger.material.emissiveIntensity = 0;
+    anims.length = 0;
+    buildDiscs();
+    buildBars();
+    logEntries = [];
+    setStepInfo('idle');
+    renderLogPanel();
+  }
+
+  /* ═══════════════════════════════════════
+     Render Loop
+     ═══════════════════════════════════════ */
+  function loop() {
+    requestAnimationFrame(loop);
+    camUpdate();
+    tickAnims();
+    renderer.render(scene, camera);
+  }
+
+  /* ═══════════════════════════════════════
+     Boot on DOM ready
+     ═══════════════════════════════════════ */
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+  </script>
+</body>
+</html>

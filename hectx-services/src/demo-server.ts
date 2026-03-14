@@ -61,9 +61,10 @@ type DemoState = {
   participants: Record<string, string>;   // party id -> participant CID
   wallets: Record<string, string>;        // party id -> wallet CID
   holdings: Record<string, number>;       // investor name -> balance
+  totalSupply: number;
 };
 
-const state: DemoState = { parties: {}, participants: {}, wallets: {}, holdings: {} };
+const state: DemoState = { parties: {}, participants: {}, wallets: {}, holdings: {}, totalSupply: 0 };
 
 const CANTON_URL = process.env.CANTON_URL ?? "http://localhost:2975";
 const AUTH_SECRET = process.env.AUTH_SECRET ?? "unsafe";
@@ -329,6 +330,7 @@ async function runMint(emit: Emitter): Promise<any> {
     if (newSupply) {
       state.supplyCid = newSupply.contractId;
       totalSupply = Number(newSupply.createArgument?.totalSupply ?? totalSupply);
+      state.totalSupply = totalSupply;
     }
 
     // Read actual minted amount from HectXHolding CreatedEvent
@@ -394,9 +396,8 @@ async function runTransfer(emit: Emitter): Promise<any> {
     const senderParty = state.parties[tx.from];
     const receiverParty = state.parties[tx.to];
 
-    // Query ACS for sender's holdings
-    const holdings = await queryACS(c, tid("HectX.Holding", "HectXHolding"), admin);
-    const senderHoldings = holdings.filter((evt: any) => evt.createArgument?.owner === senderParty);
+    // Query ACS for sender's holdings (query as sender, not admin — avoids 200-element limit)
+    const senderHoldings = await queryACS(c, tid("HectX.Holding", "HectXHolding"), senderParty);
     const holdingCids = senderHoldings.map((evt: any) => evt.contractId);
 
     if (holdingCids.length === 0) {
@@ -426,15 +427,13 @@ async function runTransfer(emit: Emitter): Promise<any> {
       act,
     );
 
-    // Refresh balances for sender and receiver from ACS
-    const allHoldings = await queryACS(c, tid("HectX.Holding", "HectXHolding"), admin);
-    for (const [name, pid] of Object.entries(state.parties)) {
-      if (pid === senderParty || pid === receiverParty) {
-        state.holdings[name] = allHoldings
-          .filter((evt: any) => evt.createArgument?.owner === pid)
-          .reduce((sum: number, evt: any) => sum + Number(evt.createArgument?.amount ?? 0), 0);
-      }
-    }
+    // Refresh balances — query each party individually (avoids 200-element ACS limit)
+    const [sAfter, rAfter] = await Promise.all([
+      queryACS(c, tid("HectX.Holding", "HectXHolding"), senderParty),
+      queryACS(c, tid("HectX.Holding", "HectXHolding"), receiverParty),
+    ]);
+    state.holdings[tx.from] = sAfter.reduce((sum: number, evt: any) => sum + Number(evt.createArgument?.amount ?? 0), 0);
+    state.holdings[tx.to] = rAfter.reduce((sum: number, evt: any) => sum + Number(evt.createArgument?.amount ?? 0), 0);
 
     emit("progress", {
       type: "transfer_executed",
@@ -503,9 +502,8 @@ async function runRejection(emit: Emitter): Promise<any> {
     );
 
     // Attempt ApproveMint — expect failure
-    // Re-query supply CID in case it changed
-    const supplies = await queryACS(c, tid("HectX.NAV", "Supply"), admin);
-    const supplyCid = supplies.length > 0 ? supplies[0].contractId : state.supplyCid!;
+    // Use tracked Supply CID (avoids 200-element ACS limit on admin-wide query)
+    const supplyCid = state.supplyCid!;
 
     let reason = "investor jurisdiction prohibited";
     try {
@@ -550,22 +548,25 @@ app.get("/api/status", async (_req: Request, res: Response) => {
     const c = cfg();
     const admin = state.adminParty;
 
-    const holdings = await queryACS(c, tid("HectX.Holding", "HectXHolding"), admin);
+    // Query each investor's holdings individually (avoids 200-element ACS limit)
+    const holdingTemplate = tid("HectX.Holding", "HectXHolding");
+    const partyEntries = Object.entries(state.parties);
+    const results = await Promise.all(
+      partyEntries.map(async ([name, partyId]) => {
+        const h = await queryACS(c, holdingTemplate, partyId);
+        const balance = h.reduce((sum: number, evt: any) => sum + Number(evt.createArgument?.amount ?? 0), 0);
+        return { name, balance, count: h.length };
+      }),
+    );
     const balances: Record<string, number> = {};
     let count = 0;
-    for (const evt of holdings) {
-      const args = evt.createArgument ?? {};
-      count++;
-      // Reverse-lookup investor name from party id
-      for (const [name, partyId] of Object.entries(state.parties)) {
-        if (args.owner === partyId) {
-          balances[name] = (balances[name] ?? 0) + Number(args.amount ?? 0);
-        }
-      }
+    for (const r of results) {
+      if (r.balance > 0) balances[r.name] = r.balance;
+      count += r.count;
     }
 
-    const supplies = await queryACS(c, tid("HectX.NAV", "Supply"), admin);
-    const totalSupply = Number(supplies[0]?.createArgument?.totalSupply ?? 0);
+    // Use tracked totalSupply (avoids 200-element ACS limit on admin-wide Supply query)
+    const totalSupply = state.totalSupply;
 
     const approvedJurisdictions = [...new Set(
       INVESTORS.filter((i) => !i.prohibited).map((i) => i.jurisdiction),
@@ -762,6 +763,7 @@ app.post("/api/reset", (_req: Request, res: Response) => {
   state.participants = {};
   state.wallets = {};
   state.holdings = {};
+  state.totalSupply = 0;
   sessionSuffix = Math.random().toString(36).slice(2, 6);
   res.json({ ok: true });
 });

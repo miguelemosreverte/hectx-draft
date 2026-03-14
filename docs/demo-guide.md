@@ -51,6 +51,22 @@ The demo server starts on **http://localhost:5177**. It serves the UI at `/` and
 
 Open **http://localhost:5177** in a browser. Click **"Run All Steps"** or run each step individually.
 
+### 3D Infographic
+
+The demo includes a Three.js 3D infographic at **http://localhost:5177/infographic.html**. It visualizes the full HECTX lifecycle from a top-down view:
+
+- **Investor discs** arranged by jurisdiction around a central ledger prism
+- **Gold arcs** for mints, **teal arcs** for transfers, **red bounce-back arcs** for compliance rejections
+- **Per-investor balance bars** that grow as tokens are minted and shift during transfers
+- **Compliance check rings** cascade outward from each investor during minting (green = pass, red = fail)
+- **Transfer network** — persistent ground connections between transacting parties
+- **Step explanation panel** (left) — describes what each step demonstrates
+- **Transaction log** (right) — scrolling real-time log of backend operations
+
+The infographic connects to the same SSE streaming endpoints as the main dashboard. Click **"Run All Steps"** and watch the full demo unfold in 3D. Drag to orbit, scroll to zoom.
+
+Autoplay mode: `http://localhost:5177/infographic.html?autoplay&delay=800`
+
 ### One-liner (localnet + demo server)
 
 ```bash
@@ -342,6 +358,7 @@ A: Yes. `EligibilityPolicy.prohibitedJurisdictions` is a `[Text]` — an arbitra
 | File | Purpose |
 |------|---------|
 | `docs/demo/index.html` | Demo UI — single-page application |
+| `docs/demo/infographic.html` | Three.js 3D infographic (top-down view) |
 | `docs/demo/styles.css` | Dark professional theme |
 | `docs/demo/app.js` | Interactive controller with autoplay support |
 | `hectx-services/src/demo-server.ts` | Backend — talks to Canton v2 JSON API |
